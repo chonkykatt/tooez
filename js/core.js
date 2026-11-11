@@ -294,13 +294,35 @@ TTS.hasFiles = () => have().size > 0;
 TTS.fileFor = (role, text) => { const k = TTS.key(role, text); return have().has(k) ? 'audio/' + k + '.mp3' : null; };
 // một thẻ audio dùng chung: iPhone chỉ cho phát tiếp nếu thẻ đã được "mở khóa" bằng một lần chạm
 const AEL = typeof Audio !== 'undefined' ? new Audio() : null;
-if (AEL) { AEL.preload = 'auto'; document.addEventListener('pointerdown', function unlock() { try { AEL.muted = true; const p = AEL.play(); p && p.catch(() => {}); AEL.pause(); AEL.muted = false; } catch (e) {} document.removeEventListener('pointerdown', unlock, true); }, true); }
+// 0,1 giây im lặng: phát một lần trong cú chạm đầu tiên để trình duyệt (Opera, Safari...) cho phép phát tiếp về sau
+const SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//OEwAAAAAAAAAAAAEluZm8AAAAPAAAABwAAA2AAVVVVVVVVVVVVVVVVVVVxcXFxcXFxcXFxcXFxcY6Ojo6Ojo6Ojo6Ojo6Oqqqqqqqqqqqqqqqqqqqqx8fHx8fHx8fHx8fHx8fj4+Pj4+Pj4+Pj4+Pj4///////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQEIAAAAAAAAANgmVBi7QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NExAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExFMAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKYAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+let unlocked = false;
+const unlock = () => {
+  if (unlocked || !AEL) return; unlocked = true;
+  try { if (AEL.paused && !AEL.src) { AEL.src = SILENT; const p = AEL.play(); p && p.catch(() => { unlocked = false; }); } } catch (e) { unlocked = false; }
+  if (unlocked) ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => document.removeEventListener(ev, unlock, true));
+};
+if (AEL) { AEL.preload = 'auto'; ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => document.addEventListener(ev, unlock, true)); }
+// trình duyệt chặn tự phát: hiện nút "Bấm để nghe", bấm vào là phát đúng câu đó
+const askTap = src => new Promise(res => {
+  const old = document.querySelector('.tap-audio'); if (old) old.remove();
+  const b = document.createElement('button'); b.className = 'tap-audio'; b.innerHTML = '🔊 Bấm để bật âm thanh';
+  b.onclick = () => { b.remove(); const p = AEL.play(); if (p && p.then) p.then(() => res(true), () => res(false)); else res(true); };
+  document.body.appendChild(b); setTimeout(() => { if (b.isConnected) { b.remove(); res(false); } }, 15000);
+});
 const playSrc = (src, rate) => new Promise(res => {
   if (!AEL) return res(false);
   let done = false; const fin = ok => { if (!done) { done = true; AEL.onended = AEL.onerror = null; res(ok); } };
-  AEL.onended = () => fin(true); AEL.onerror = () => fin(false);
+  AEL.onended = () => fin(true);
+  AEL.onerror = () => { console.warn('[TOOEZ audio] lỗi tải', src, AEL.error && AEL.error.code); fin(false); };
   AEL.src = src; AEL.playbackRate = rate; AEL.defaultPlaybackRate = rate;
-  const p = AEL.play(); if (p && p.catch) p.catch(() => fin(false));
+  const p = AEL.play();
+  if (p && p.catch) p.catch(e => {
+    if (done) return;
+    if (e && e.name === 'NotAllowedError') { askTap(src).then(ok => { if (!ok) fin(false); }); return; }
+    if (e && e.name === 'AbortError') return fin('stop');   // bị dừng vì chuyển câu / rời trang
+    console.warn('[TOOEZ audio]', e && e.name, src); fin(false);
+  });
   setTimeout(() => fin(true), 30000);
 });
 // "(A) The man is..." / "A. Yes, ..." → đọc chữ cái và câu bằng hai file riêng, nên một câu dùng được cho mọi thứ tự đáp án
@@ -309,7 +331,7 @@ TTS.files = (role, text) => { const parts = splitLetter(text), srcs = parts.map(
 TTS.speak = async (text, opt = {}) => {
   const role = opt.role || (opt.sex === 'M' ? 'M' : 'W'), srcs = S.profile.useFiles === false ? null : TTS.files(role, text);
   if (srcs) { const tk = TTS.token, rate = (opt.rate || 1) * (S.profile.rate || 1);
-    for (let i = 0; i < srcs.length; i++) { if (tk !== TTS.token) return; const ok = await playSrc(srcs[i], rate); if (!ok) return TTS.speakVoice(text, opt); if (i < srcs.length - 1) await new Promise(r => setTimeout(r, 150)); }
+    for (let i = 0; i < srcs.length; i++) { if (tk !== TTS.token) return; const ok = await playSrc(srcs[i], rate); if (tk !== TTS.token || ok === 'stop') return; if (!ok) return TTS.speakVoice(text, opt); if (i < srcs.length - 1) await new Promise(r => setTimeout(r, 150)); }
     return; }
   if (window.__audioMiss) window.__audioMiss.push(role + '|' + TTS.norm(text));
   return TTS.speakVoice(text, opt);

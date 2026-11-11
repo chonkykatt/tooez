@@ -328,8 +328,11 @@ const playSrc = (src, rate) => new Promise(res => {
 // "(A) The man is..." / "A. Yes, ..." → đọc chữ cái và câu bằng hai file riêng, nên một câu dùng được cho mọi thứ tự đáp án
 const splitLetter = t => { const m = TTS.norm(t).match(/^\(?([A-D])[).]\s+(.+)$/); return m ? [m[1] + '.', m[2]] : [TTS.norm(t)]; };
 TTS.files = (role, text) => { const parts = splitLetter(text), srcs = parts.map(p => TTS.fileFor(role, p)); return srcs.every(Boolean) ? srcs : null; };
+// Edge có sẵn giọng Microsoft "Online (Natural)" rất hay → mặc định dùng luôn giọng đó; trình duyệt khác dùng file thu sẵn
+TTS.edgeNatural = () => TTS.voices.some(v => /Microsoft/i.test(v.name) && /Natural/i.test(v.name));
+TTS.useVoice = () => { const m = S.profile.voiceSrc || 'auto'; return m === 'browser' ? TTS.voices.length > 0 : m === 'files' ? false : TTS.edgeNatural(); };
 TTS.speak = async (text, opt = {}) => {
-  const role = opt.role || (opt.sex === 'M' ? 'M' : 'W'), srcs = S.profile.useFiles === false ? null : TTS.files(role, text);
+  const role = opt.role || (opt.sex === 'M' ? 'M' : 'W'), srcs = TTS.useVoice() ? null : TTS.files(role, text);
   if (srcs) { const tk = TTS.token, rate = (opt.rate || 1) * (S.profile.rate || 1);
     for (let i = 0; i < srcs.length; i++) { if (tk !== TTS.token) return; const ok = await playSrc(srcs[i], rate); if (tk !== TTS.token || ok === 'stop') return; if (!ok) return TTS.speakVoice(text, opt); if (i < srcs.length - 1) await new Promise(r => setTimeout(r, 150)); }
     return; }

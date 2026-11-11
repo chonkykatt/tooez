@@ -533,6 +533,8 @@ X.route(/^\/settings$/, view => {
         <div class="field"><label>Từ mới mỗi ngày</label><input class="inp" type="number" min="0" max="40" data-p="newWords" value="${p.newWords}"></div></div>
         <div class="field" style="margin-top:12px"><label>Ưu tiên (lộ trình hiện trong Hôm nay)</label><div class="pick g2 compact" id="st-focus">${X.TRACKS.map(x => `<button type="button" data-k="${x.k}" class="pick-o ${p.focus.includes(x.k) ? 'on' : ''}"><span class="pick-ck">${icon('check')}</span><b>${esc(x.n)}</b></button>`).join('')}</div></div></div>
       <div class="card"><div class="h3" style="margin-bottom:12px">Giọng đọc</div>
+        <div class="field" style="margin-bottom:12px"><label>Nguồn giọng</label><div class="seg" id="st-src">${[['auto', 'Tự động'], ['files', 'Giọng TOOEZ'], ['browser', 'Giọng trình duyệt']].map(([k, n]) => `<button data-v="${k}" class="${(p.voiceSrc || 'auto') === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+          <div class="small muted" style="margin-top:6px">Tự động: dùng giọng Natural có sẵn nếu bạn mở bằng Microsoft Edge, trình duyệt khác dùng giọng TOOEZ thu sẵn.</div></div>
         <div id="st-vq"></div>
         <div class="field"><label>Giọng chính</label><div class="seg" id="st-acc">${[['en-US', 'Mỹ'], ['en-GB', 'Anh'], ['en-AU', 'Úc']].map(([k, n]) => `<button data-v="${k}" class="${p.accent === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
         <div class="grid g2" style="margin-top:12px"><div class="field"><label>Giọng nữ</label><select class="inp" id="st-vw"></select></div><div class="field"><label>Giọng nam</label><select class="inp" id="st-vm"></select></div></div>
@@ -555,6 +557,7 @@ X.route(/^\/settings$/, view => {
     <div class="sec">${X.donateBox ? X.donateBox(true) : ''}</div>${X.tmNote ? X.tmNote() : ''}</div>`;
   $$('[data-p]', view).forEach(i => i.onchange = () => { p[i.dataset.p] = i.type === 'number' ? +i.value : i.value.trim(); X.save(); X.renderSide(); X.toast('Đã lưu'); });
   $$('#st-focus button', view).forEach(b => b.onclick = () => { b.classList.toggle('on'); p.focus = $$('#st-focus button.on', view).map(x => x.dataset.k); X.save(); });
+  $$('#st-src button', view).forEach(b => b.onclick = () => { $$('#st-src button', view).forEach(x => x.classList.toggle('on', x === b)); p.voiceSrc = b.dataset.v; X.save(); X.TTS.speak('Could you send me the revised schedule by Friday?', { sex: 'W' }); });
   $$('#st-acc button', view).forEach(b => b.onclick = () => { $$('#st-acc button', view).forEach(x => x.classList.toggle('on', x === b)); p.accent = b.dataset.v; X.save(); });
   $('#st-sound', view).onchange = e => { p.sound = e.target.checked; X.save(); if (p.sound) X.sfx.ok(); };
   $('#st-rate', view).oninput = e => { p.rate = +e.target.value; $('#st-rv', view).textContent = p.rate + '×'; X.save(); };

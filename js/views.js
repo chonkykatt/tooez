@@ -403,7 +403,7 @@ function errCard(e) {
     ${e.status === 'open' ? `<div style="margin-top:12px"><div class="small" style="font-weight:600">1. Vì sao sai?</div><div class="causes">${X.CAUSES.map(([k, n]) => `<button data-cause="${k}" class="${e.cause === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       <div class="grid g2"><div class="field"><label>2. Mình đã nghĩ gì khi chọn?</label><textarea class="inp" data-f="note" placeholder="${esc(PH[(it && it.part) || 2][0])}">${esc(e.note)}</textarea></div>
       <div class="field"><label>3. Quy tắc rút ra (lần sau gặp sẽ làm gì)</label><textarea class="inp" data-f="rule" placeholder="${esc(PH[(it && it.part) || 2][1])}">${esc(e.rule)}</textarea></div></div>
-      <div class="row" style="margin-top:10px"><button class="btn pri sm" data-k="diag">Lưu chẩn đoán - làm lại sau 1 ngày</button><button class="btn ghost sm" data-k="del">Xóa</button></div></div>`
+      <div class="row" style="margin-top:16px"><button class="btn pri sm" data-k="diag">Lưu chẩn đoán - làm lại sau 1 ngày</button><button class="btn ghost sm" data-k="del">Xóa</button></div></div>`
     : `${e.cause || e.rule ? `<div class="card tint" style="margin-top:10px;padding:12px 14px"><div class="small"><b>Nguyên nhân:</b> ${esc(X.causeName(e.cause))}</div>${e.note ? `<div class="small"><b>Đã nghĩ:</b> ${esc(e.note)}</div>` : ''}${e.rule ? `<div class="small"><b>Quy tắc:</b> ${esc(e.rule)}</div>` : ''}</div>` : ''}`}
   </div>`;
 }

@@ -60,7 +60,7 @@ X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
           <li>Mỗi câu có thể đánh dấu <b>Phân vân</b> hoặc <b>Lụi</b>. Câu lụi trúng vẫn được tính là cần ôn lại.</li></ul></div>
       <div class="card"><div class="h3" style="margin-bottom:6px">Mẹo làm Part ${e.part}</div><ul class="small ex-ul">${g.rules.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
         ${LISTEN(e.part) && TTS.missing() ? `<div class="card tint small" style="margin-top:12px;padding:12px">${icon('vol')} Trình duyệt này chưa có giọng đọc tiếng Anh nên không phát được audio. Mở bằng Microsoft Edge, Chrome hoặc Safari để làm như thi thật. Nếu vẫn làm ở đây, chữ sẽ hiện thay cho audio.</div>` : ''}</div></div>
-    <div class="row">${sv ? `<button class="btn pri lg" id="ex-cont">Làm tiếp từ câu ${e.start + (sv.k || 0)} ${icon('arrow')}</button><button class="btn lg" id="ex-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ex-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
+    <div class="row sec">${sv ? `<button class="btn pri lg" id="ex-cont">Làm tiếp từ câu ${e.start + (sv.k || 0)} ${icon('arrow')}</button><button class="btn lg" id="ex-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ex-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
   $('#ex-go', view).onclick = () => { X.sessDel('/exam/' + id); runExam(view, e, items); };
   const c = $('#ex-cont', view); if (c) c.onclick = () => runExam(view, e, items, sv);
 });

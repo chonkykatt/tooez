@@ -79,7 +79,7 @@ X.route(/^\/today$/, view => {
   const MI = { exam: ['fl-sky', 'test'], path: ['c-syn', 'path'], words: ['c-sun', 'words'], errors: ['c-ember', 'err'], lab: ['c-sky', 'lab'] };
   const missions = [
     ...(exSug ? [{ k: 'exam', t: `Đo: ${X.examTitle(exSug.e.id)}`, d: exSug.why, href: `#/exam/${exSug.e.id}`, btn: 'Làm đề' }] : []),
-    { k: 'path', t: next ? `Lộ trình: ${next.next.title}` : 'Lộ trình: chọn Part để học', d: next ? `${X.trackName(next.k)} - ${{ learn: 'Kiến thức', vocab: 'Từ vựng', drill: 'Luyện', check: 'Kiểm tra unit' }[next.next.type] || ''}` : 'Đặt Part trọng tâm trong Hồ sơ', href: next ? stationHref(next.next) : '#/path', btn: 'Học' },
+    { k: 'path', t: next ? `Lộ trình: ${next.next.title}` : 'Lộ trình: chọn Part để học', d: next ? `${X.trackName(next.k)} - ${{ learn: 'Học', vocab: 'Từ vựng', drill: 'Luyện', check: 'Kiểm tra unit' }[next.next.type] || ''}` : 'Đặt Part trọng tâm trong Hồ sơ', href: next ? stationHref(next.next) : '#/path', btn: 'Học' },
     { k: 'words', t: due ? `Ôn ${due} từ đến hạn` : newLeft ? `Học ${newLeft} từ mới` : 'Từ vựng: xong phần hôm nay', d: 'Ôn đúng lúc sắp quên, nhớ lâu hơn đọc lại', href: due ? '#/vocab/review' : '#/vocab/learn', btn: due ? 'Ôn' : 'Học' },
     { k: 'errors', t: ec.todo ? `Chữa ${ec.todo} lỗi trong Sổ lỗi` : 'Sổ lỗi: không còn lỗi chờ chữa', d: ec.open ? `${ec.open} lỗi chưa ghi nguyên nhân - ${ec.due} câu đến hạn làm lại` : 'Làm sai câu nào, câu đó tự vào đây', href: '#/errors', btn: 'Chữa' },
     { k: 'lab', t: `Lab: ${labSugg.title}`, d: labSugg.why, href: `#/lab/${labSugg.id}`, btn: 'Luyện' },

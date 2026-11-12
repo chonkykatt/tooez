@@ -105,7 +105,7 @@ function runExam(view, e, items, sv) {
       body = `<div class="ex-dir">Questions ${N(k0)}-${N(k1)} refer to the following ${e.part === 3 ? 'conversation' : 'talk'}${g ? ' and graphic' : ''}.</div>${g ? `<div class="ex-graphic passage">${g.passage}</div>` : ''}${p.idx.map(k => qBlock(k)).join('')}`; }
     else if (e.part === 5) body = qBlock(k0);
     else body = `<div class="qz-body split"><div class="passage" id="ex-pass"><div class="kicker" style="margin-bottom:10px">Questions ${N(k0)}-${N(k1)} refer to the following ${esc(docName(it))}.</div>${it.passage || ''}</div><div>${p.idx.map(k => qBlock(k)).join('')}</div></div>`;
-    const tx = textMode && it.audio ? `<div class="transcript">${it.audio.map(l => `<p>${l.s === 'M' || l.s === 'W' ? `<b>${l.s}:</b> ` : ''}${esc(l.t)}</p>`).join('')}</div>` : '';
+    const tx = textMode && it.audio ? `<div class="transcript">${it.audio.map(l => `<p>${['M', 'W', 'M2'].includes(l.s) ? `<b>${l.s}:</b> ` : ''}${esc(l.t)}</p>`).join('')}</div>` : '';
     const ctl = listen && !textMode
       ? `<div class="ex-ctl"><span class="ex-status" id="ex-st">${icon('vol')} Đang chuẩn bị…</span><span class="grow"></span><button class="btn sm" id="ex-pause">${st.paused ? 'Tiếp tục' : 'Tạm dừng'}</button><button class="btn sm ghost" id="ex-skip">Sang câu tiếp ${icon('arrow')}</button></div>`
       : `<div class="qz-actions"><button class="btn" id="ex-prev" ${st.pi === 0 ? 'disabled' : ''}>${icon('back')} Trước</button><button class="btn pri" id="ex-next">${st.pi < pages.length - 1 ? 'Câu tiếp' : 'Nộp bài'} ${icon('arrow')}</button>${st.pi < pages.length - 1 ? '<button class="btn ghost" id="ex-sub" style="margin-left:auto">Nộp bài</button>' : ''}</div>`;
@@ -231,7 +231,7 @@ function review(view, e, items, res) {
     const p = pages[pi], its = p.idx.map(k => items[k]), it = its[0], k0 = p.idx[0], k1 = p.idx[p.idx.length - 1];
     const qs = its.flatMap(quote);
     const tx = it.audio && it.audio.length ? `<div class="ex-tx"><div class="row"><b class="grow">Transcript</b><button class="btn sm" id="rv-play">${icon('play')} Nghe lại cả bài</button></div>
-      ${it.audio.map((l, i) => { const hit = qs.some(q => l.t.toLowerCase().replace(/[’']/g, "'").includes(q.replace(/[’']/g, "'").slice(0, 30))); return `<p class="${hit ? 'ev' : ''}"><button class="say" data-line="${i}" title="Nghe câu này">${icon('vol')}</button>${l.s === 'M' || l.s === 'W' ? `<b>${l.s}:</b> ` : ''}${esc(l.t)}</p>`; }).join('')}
+      ${it.audio.map((l, i) => { const hit = qs.some(q => l.t.toLowerCase().replace(/[’']/g, "'").includes(q.replace(/[’']/g, "'").slice(0, 30))); return `<p class="${hit ? 'ev' : ''}"><button class="say" data-line="${i}" title="Nghe câu này">${icon('vol')}</button>${['M', 'W', 'M2'].includes(l.s) ? `<b>${l.s}:</b> ` : ''}${esc(l.t)}</p>`; }).join('')}
       ${it.transcriptVi ? `<p class="small muted">${esc(it.transcriptVi)}</p>` : ''}<div class="small faint">Dòng tô vàng là chỗ chứa đáp án. Bước 1 của cách chữa: nghe lại khi chưa nhìn chữ, rồi mới đọc transcript.</div></div>` : '';
     let left = '';
     if (e.part === 1) left = `<div class="ex-pic"><img src="${esc(it.img || '')}" alt=""></div>`;

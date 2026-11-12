@@ -269,7 +269,8 @@ function rounds(L) {
     }
     case 'implied': {
       const keys = Object.keys(L.fn);
-      return items.map((x, i) => { const opts = shuffle([x.a, ...sample(keys.filter(k => k !== x.a), 3)]); const who = x.who === 'M' ? 'người đàn ông' : 'người phụ nữ';
+      const clash = (a, b) => (L.clash || []).some(([p, q]) => (p === a && q === b) || (p === b && q === a));   // hai chức năng cùng đúng được thì không xếp chung
+      return items.map((x, i) => { const opts = shuffle([x.a, ...sample(keys.filter(k => k !== x.a && !clash(x.a, k)), 3)]); const who = x.who === 'M' ? 'người đàn ông' : 'người phụ nữ';
         return { key: 'i' + i, q: `<div class="dlg">${x.d.map(([s, t]) => `<p><b>${s === 'M' ? 'Man' : 'Woman'}:</b> ${esc(t)}</p>`).join('')}<p><b>${x.who === 'M' ? 'Man' : 'Woman'}:</b> “${esc(x.q)}”</p></div><div class="q-prompt" style="margin-top:14px">Why does the ${x.who === 'M' ? 'man' : 'woman'} say, “${esc(x.q)}”?</div>`,
           opts: opts.map(k => L.fn[k][0]), a: opts.indexOf(x.a), after: `Câu trích có chức năng: <b>${esc(L.fn[x.a][1])}</b>. Ngụ ý luôn phải dựa vào câu ngay trước nó.`, audio: [...x.d.map(([s, t]) => ({ s, t })), { s: x.who, t: x.q }] }; });
     }

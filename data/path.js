@@ -472,7 +472,7 @@ window.PATH.hieu = { title: 'Tầng 2 - Hiểu', layer: 2, units: [
   { id: 'c2', t: 'Context & Communicative Function', vi: 'Ngữ cảnh và chức năng câu nói', goal: 'Hiểu câu nói đang dùng để làm gì, không chỉ nghĩa đen.', skills: ['context'],
     cards: [
       { h: 'Nghĩa đen vs ý định', b: '“It’s only a five-minute walk.” không chỉ nói khoảng cách. Câu này đang <b>gợi ý không cần đi xe</b>. Mỗi câu nói có một chức năng: gợi ý, từ chối, trấn an, phàn nàn, trả lời gián tiếp. Part 2 và câu ngụ ý Part 3-4 kiểm tra đúng kỹ năng này.', ex: ['I’ll be in meetings all afternoon. → từ chối khéo', 'I haven’t heard anything yet. → không biết'],
-        q: { q: '“We’ve already used that supplier twice this month.” trả lời cho “Should we order from Delta?” nghĩa là?', o: ['Đồng ý', 'Ngầm phản đối / gợi ý đổi nhà cung cấp', 'Hỏi lại'], a: 1, why: 'Câu nêu sự việc để ngầm không muốn chọn nữa.' } },
+        q: { q: '“Their last shipment arrived damaged.” trả lời cho “Should we order from Delta?” nghĩa là?', o: ['Đồng ý', 'Ngầm phản đối / gợi ý đổi nhà cung cấp', 'Hỏi lại'], a: 1, why: 'Câu nêu sự việc để ngầm không muốn chọn nữa.' } },
     ],
     voc: ['Câu trích ngụ ý (Why does the speaker say...?)@Cụm chức năng', 'Đáp: Không biết, không chắc@Cụm chức năng', 'Đáp: Chấp nhận / từ chối@Cụm chức năng'], drill: _sk('context') },
   { id: 'c3', t: 'Main Idea & Purpose', vi: 'Ý chính và mục đích', goal: 'Nắm chủ đề, mục đích, người nói trong phần mở đầu của bài nghe và bài đọc.', skills: ['main'],

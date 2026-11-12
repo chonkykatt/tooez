@@ -25,7 +25,7 @@ X.progTabs = cur => `<div class="part-tabs ptabs2"><a class="part-tab ${cur === 
 /* ---------------- sidebar ---------------- */
 // thứ tự = thứ tự học: Đo → Học → Luyện → Chữa, rồi tới phần xem lại và tra cứu
 const NAV = [
-  ['/about', 'heart', 'Giới thiệu & ủng hộ'], ['/today', 'today', 'Hôm nay', 'Bắt đầu'],
+  ['/about', 'heart', 'Giới thiệu & ủng hộ'], ['/today', 'today', 'Hôm nay', 'Bắt đầu'], ['/ngop', 'leaf', 'Bị ngộp Part 3, 4, 7?'],
   ['/tests', 'test', 'Đề thi từng Part', '1 - Đo'],
   ['/path', 'path', 'Lộ trình', '2 - Học'], ['/vocab', 'words', 'Kho từ vựng'],
   ['/lab', 'lab', 'Lab phản xạ', '3 - Luyện'],

@@ -1322,3 +1322,58 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .keep-note{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin:12px 16px 0;background:#FFF3D6;color:#3B2A00;border:1px solid #F1D48A;border-radius:14px}
 .keep-note .kn-t{flex:1 1 320px;line-height:1.45}
 .keep-note .kn-a{display:flex;gap:6px;align-items:center;margin-left:auto}
+/* ===== Bị ngộp Part 3, 4, 7? ===== */
+.ng-hero{display:flex;gap:20px;align-items:center}
+.ng-hero .ng-cat{flex:none}
+.ng-jump{display:flex;flex-wrap:wrap;gap:8px}
+.ng-jump a{border:1px solid var(--line-strong);background:var(--card);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;color:var(--ink)}
+.ng-jump a:hover{text-decoration:none;border-color:var(--ink)}
+.ng-why .card > b{display:block;margin-bottom:6px}
+.ng-num{font:700 30px/1 var(--f-display);color:var(--syn);margin-bottom:8px}
+.ng-ul{padding-left:18px;margin:6px 0 12px}.ng-ul li{margin:4px 0}
+.ng-bars{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.ng-bar{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:13px}
+.ng-bar i{grid-column:1/-1;order:3;height:10px;border-radius:6px;background:var(--paper-dim);position:relative;overflow:hidden}
+.ng-bar i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--syn);border-radius:6px}
+.ng-bar:first-child i::after{background:var(--red)}
+.ng-bar:last-child i::after{background:var(--sage)}
+.ng-map td{min-width:150px}
+.ng-recipes .card ol{padding-left:18px;margin:8px 0}
+.ng-recipes .card ol li{margin:3px 0}
+.ng-ex{background:var(--paper-dim);border-radius:10px;padding:10px 12px;margin-top:8px}
+.ng-guess{margin-top:16px}.ng-guess .g4 > div{background:var(--paper-dim);border-radius:10px;padding:10px 12px}
+.ng-ladder .ng-step{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.ng-ladder .ng-step:first-of-type{border-top:0}
+.ng-ladder .ng-step .btn{margin-top:8px}
+.ng-tick{flex:none;width:34px;height:34px;border-radius:50%;border:2px solid var(--line-strong);background:var(--card);font:700 14px var(--f-mono);display:grid;place-items:center;color:var(--ink-soft)}
+.ng-step.done .ng-tick{background:var(--sage);border-color:var(--sage);color:#fff}
+.ng-tick svg{width:16px;height:16px}
+.ng-set .h3{margin:4px 0 2px}
+.ng-end .bubble{max-width:640px}
+.ng-sci summary{cursor:pointer}
+.ng-sci ul{padding-left:18px}
+.ng-cls{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.ng-cls .grow{flex:1 1 300px}
+.ng-cls-r{flex-basis:100%}
+.ng-order{display:flex;gap:6px;align-items:center;margin:14px 0 10px;flex-wrap:wrap}
+.ng-order::before{content:"Thứ tự làm:";color:var(--ink-faint);margin-right:4px}
+.ng-o{font:600 12px var(--f-mono);padding:4px 9px;border-radius:8px;background:var(--paper-dim);color:var(--ink-soft)}
+.ng-o.cur{background:var(--ink);color:var(--paper)}
+.ng-work{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:start}
+.ng-qcol{position:sticky;top:16px}
+.ng-sig{margin-top:10px;color:var(--syn-deep);background:var(--syn-soft);border-radius:10px;padding:8px 10px}
+.ng-sig svg{width:14px;height:14px;vertical-align:-2px}
+.ng-clock{font-family:var(--f-mono);font-weight:600;color:var(--ink-faint)}
+.ng-clock.warn{color:#b7791f}.ng-clock.red{color:var(--red)}
+.ng-tip{margin-top:10px;background:var(--gold-soft);border-radius:10px;padding:8px 10px}
+.ng-fb{margin-top:14px;border-radius:12px;padding:12px 14px;background:var(--paper-dim)}
+.ng-fb.ok{background:var(--sage-soft)}.ng-fb.bad{background:var(--red-soft)}
+.ng-docs{padding:14px}
+.ng-tabs{flex-wrap:wrap;margin-bottom:10px}
+.ng-doc{font-size:14.5px;line-height:1.65;max-height:72vh;overflow:auto;padding-right:4px}
+.ng-doc h4{margin:4px 0 10px}
+.ng-doc mark{background:none;color:inherit;transition:background .3s}
+.ng-doc mark.on{background:#FFE58A;border-radius:4px;box-shadow:0 0 0 2px #FFE58A}
+@media (max-width:960px){.ng-work{grid-template-columns:1fr}.ng-qcol{position:static}.ng-doc{max-height:none}}
+@media (max-width:720px){.ng-hero{flex-direction:column-reverse;align-items:flex-start}.ng-guess .g4{grid-template-columns:1fr 1fr}}
+@media (max-width:460px){.ng-guess .g4{grid-template-columns:1fr}}

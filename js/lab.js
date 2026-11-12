@@ -274,7 +274,7 @@ function rounds(L) {
           opts: opts.map(k => L.fn[k][0]), a: opts.indexOf(x.a), after: `Câu trích có chức năng: <b>${esc(L.fn[x.a][1])}</b>. Ngụ ý luôn phải dựa vào câu ngay trước nó.`, audio: [...x.d.map(([s, t]) => ({ s, t })), { s: x.who, t: x.q }] }; });
     }
     case 'graphic': return items.map((x, i) => { const other = 1 - (x.listen || 0); return { key: 'g' + i, q: `<table class="gtable"><caption>${esc(x.g.title)}</caption><tr>${x.g.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>${x.g.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table><div class="q-prompt" style="margin-top:14px">${esc(x.q)}</div>`,
-      opts: x.g.rows.map(r => r[other]), a: x.ans, after: `Nghe: “${esc(x.ex)}” → dòng <b>${esc(x.g.rows[x.ans][x.listen || 0])}</b> → cột còn lại: <b>${esc(x.g.rows[x.ans][other])}</b>`, audio: [{ s: 'W', t: x.ex }] }; });
+      opts: x.g.rows.map(r => r[other]), a: x.ans, after: `<div><b>Bạn vừa nghe:</b> “${esc(x.ex)}”</div><div style="margin-top:6px">${x.why || ''}</div>`, audio: [{ s: 'W', t: x.ex }] }; });
     case 'hunt': return items.map((x, i) => x.opts ? { key: 'h' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts: x.opts, a: x.ai, after: '' } : (() => { const o = L.opts; const pick = shuffle([o.find(z => z.k === x.a), ...sample(o.filter(z => z.k !== x.a), 3)]); return { key: 'h' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts: pick.map(z => `${z.icon} ${z.label}`), a: pick.findIndex(z => z.k === x.a), after: '' }; })());
     case 'locate': return items.map((x, i) => ({ key: 'l' + i, locate: true, q: `<div class="q-prompt">${esc(x.q)}</div><div class="small muted">Bấm vào dòng chứa bằng chứng.</div>`, opts: x.lines, a: x.correct, time: x.time, after: '' }));
   }

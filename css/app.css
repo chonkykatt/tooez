@@ -1305,3 +1305,4 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .aha-u{max-width:820px}
 @keyframes lvIn{from{opacity:0;transform:translateY(-14px) scale(.8)}to{opacity:1;transform:none}}
 @media (max-width:760px){.deck .qz-top{flex-wrap:wrap}.deck .qz-top>div:not(.dots){flex:1;min-width:0}.deck .dots{flex:0 0 100%;order:3;justify-content:flex-start;gap:4px;margin-top:10px;flex-wrap:nowrap}.deck .dots i{flex:1;max-width:22px;width:auto;height:6px}}
+.flash-line{display:inline;line-height:1.7}.flash-line mark{padding:1px 4px;border-radius:5px}

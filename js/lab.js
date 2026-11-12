@@ -265,7 +265,7 @@ function rounds(L) {
     case 'reflex': return asListen(items.map((x, i) => ({ key: 'r' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts: x.opts, a: x.a, after: x.reveal ? `Đoạn tiếp theo: <i>${esc(x.reveal)}</i>` : '' })));
     case 'scan': {
       const all = items.map(x => x.vi);
-      return items.map((x, i) => { const opts = shuffle([x.vi, ...sample(all.filter(v => v !== x.vi), 3)]); return { key: 'c' + i, scan: true, q: `<div class="flash" style="font-size:20px">${x.mark}</div>`, opts, a: opts.indexOf(x.vi), after: `<span class="pill syn">${esc(x.cat)}</span> <span class="pill">Part ${x.p}</span><div style="margin-top:6px"><b>Nghe ở đâu:</b> ${esc(x.sig)}</div>` }; });
+      return items.map((x, i) => { const opts = shuffle([x.vi, ...sample(all.filter(v => v !== x.vi), 3)]); return { key: 'c' + i, scan: true, q: `<div class="flash" style="font-size:20px"><span class="flash-line">${x.mark}</span></div>`, opts, a: opts.indexOf(x.vi), after: `<span class="pill syn">${esc(x.cat)}</span> <span class="pill">Part ${x.p}</span><div style="margin-top:6px"><b>Nghe ở đâu:</b> ${esc(x.sig)}</div>` }; });
     }
     case 'implied': {
       const keys = Object.keys(L.fn);

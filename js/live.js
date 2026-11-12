@@ -5,7 +5,7 @@
   const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
   const local = !/^https?:$/.test(location.protocol) || /^(localhost|127\.|\[::1\]|.*\.local$)/.test(location.hostname);
   const admin = /admin/.test(location.search) || ls('tooez.admin');
-  const path = () => '/' + ((location.hash.slice(1) || '/about').replace(/^\//, '').replace(/\/(?:[\w-]*\d[\w-]*)$/, '/:id'));
+  const path = () => '/' + ((location.hash.slice(1).replace(/\?.*$/, '') || '/about').replace(/^\//, '').replace(/\/(?:[\w-]*\d[\w-]*)$/, '/:id'));
   if (!local && !admin) {
     window.goatcounter = { no_onload: true };
     const s = document.createElement('script');

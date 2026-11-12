@@ -46,6 +46,7 @@ const IC = {
   refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7L20 8"/><path d="M20 3v5h-5"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  share: '<path d="M12 15V4M7 9l5-5 5 5M5 14v5h14v-5"/>',
   heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   coach: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14a6 6 0 0 1 3 6"/>',
   scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
@@ -63,16 +64,76 @@ const DEF = () => ({
   words: {}, errors: [], labs: {}, tests: {}, seenTips: {},
 });
 let S;
-try { S = Object.assign(DEF(), JSON.parse(localStorage.getItem(KEY) || 'null') || {}); } catch (e) { S = DEF(); }
+const readStored = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
+S = Object.assign(DEF(), readStored() || {});
 S.profile = Object.assign(DEF().profile, S.profile || {});
-let saveT;
-const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { console.warn('save failed', e); } }, 120); };
+
+/* Gộp hai bản tiến độ (mở nhiều tab, tab cũ để lâu, chuyển dữ liệu từ chỗ khác sang).
+   Nguyên tắc: không bao giờ làm mất bài đã làm. Danh sách thì hợp lại, bản ghi có mốc thời gian thì lấy bản mới hơn,
+   số đếm (XP, số lần làm) lấy số lớn hơn, còn lại giữ bản đang mở. */
+const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+const stamp = o => isObj(o) ? Math.max(+o.lastAt || 0, +o.last || 0, +o.at || 0, +o.done || 0) : 0;
+const akey = x => !isObj(x) ? JSON.stringify(x) : x.id ? 'id:' + x.id : x.t && x.i ? x.t + '|' + x.i : x.at ? 'at:' + x.at : JSON.stringify(x);
+const mergeArr = (a, b) => {
+  const m = new Map(); a.forEach(x => m.set(akey(x), x));
+  b.forEach(x => { const k = akey(x), y = m.get(k); if (y === undefined) m.set(k, x); else if (isObj(x) && isObj(y) && stamp(x) > stamp(y)) m.set(k, x); });
+  return [...m.values()];
+};
+const merge = (dst, src, path = '') => {
+  if (!isObj(src)) return dst;
+  for (const k of Object.keys(src)) {
+    const a = dst[k], b = src[k], p = path + '.' + k;
+    if (a === undefined) dst[k] = b;
+    else if (Array.isArray(a) && Array.isArray(b)) dst[k] = mergeArr(a, b);
+    else if (isObj(a) && isObj(b)) {
+      const sa = stamp(a), sb = stamp(b);
+      if (path === '.itemStats') { if ((b.n || 0) > (a.n || 0)) dst[k] = b; }
+      else if ((sa || sb) && path !== '' && path !== '.xp') { if (sb > sa) dst[k] = b; }
+      else merge(a, b, p);
+    }
+    else if (typeof a === 'number' && typeof b === 'number' && /^\.xp|^\.lessons/.test(p)) dst[k] = Math.max(a, b);
+  }
+  return dst;
+};
+const tidy = () => {
+  S.attempts.sort((x, y) => x.t - y.t); if (S.attempts.length > 6000) S.attempts.splice(0, S.attempts.length - 6000);
+  S.errors.sort((x, y) => (y.at || 0) - (x.at || 0));
+  S.xp.total = Math.max(S.xp.total || 0, Object.values(S.xp.days || {}).reduce((s, n) => s + (+n || 0), 0));
+};
+// thay nội dung S ngay tại chỗ, để các trang đang mở vẫn giữ đúng đối tượng
+const adopt = d => { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, DEF(), d); S.profile = Object.assign(DEF().profile, S.profile || {}); };
+
+let saveT = 0, dirty = false;
+const write = () => {
+  clearTimeout(saveT); saveT = 0;
+  try {
+    const st = readStored();
+    // tab khác đã lưu sau lần cuối tab này biết → gộp vào trước khi ghi, để không đè mất bài của tab kia
+    if (st && (st._rev || 0) > (S._rev || 0)) { merge(S, st); tidy(); }
+    S._rev = Math.max(S._rev || 0, (st && st._rev) || 0) + 1;
+    localStorage.setItem(KEY, JSON.stringify(S)); dirty = false;
+  } catch (e) { console.warn('save failed', e); }
+};
+const save = () => { dirty = true; clearTimeout(saveT); saveT = setTimeout(write, 120); };
+// tab khác vừa lưu → cập nhật ngay tab này
+const pull = () => {
+  const st = readStored(); if (!st || (st._rev || 0) <= (S._rev || 0)) return false;
+  if (dirty) { merge(S, st); tidy(); S._rev = st._rev; save(); } else adopt(st);
+  return true;
+};
+window.addEventListener('storage', e => { if (e.key === KEY && pull()) { X.renderSide && X.renderSide(); X.onSync && X.onSync(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { if (pull()) { X.renderSide && X.renderSide(); X.onSync && X.onSync(); } } else if (dirty) write(); });
+window.addEventListener('pagehide', () => { if (dirty) write(); });
 X.S = () => S; X.save = save;
-X.resetAll = () => { S = DEF(); localStorage.setItem(KEY, JSON.stringify(S)); };
+X.resetAll = () => { const r = S._rev || 0; adopt(DEF()); S._rev = r; write(); };
 X.exportData = () => JSON.stringify(S);
 // xin trình duyệt đừng tự xóa dữ liệu khi máy đầy bộ nhớ hoặc lâu không mở (không phải trình duyệt nào cũng đồng ý)
 try { navigator.storage && navigator.storage.persist && navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist(); }); } catch (e) {}
-X.importData = txt => { const d = JSON.parse(txt); if (!d || !d.v) throw new Error('File không đúng định dạng'); S = Object.assign(DEF(), d); save(); };
+const parseBackup = txt => { const d = typeof txt === 'string' ? JSON.parse(txt) : txt; if (!d || !d.v) throw new Error('File không đúng định dạng'); return d; };
+// khôi phục từ file: thay hẳn bằng bản trong file (như trước)
+X.importData = txt => { const d = parseBackup(txt), r = S._rev || 0; adopt(d); S._rev = r; write(); };
+// gộp thêm (dùng khi chuyển tiến độ từ trình duyệt / địa chỉ khác sang): giữ cả bài ở đây lẫn bài mang sang
+X.mergeData = txt => { const d = parseBackup(txt); merge(S, d); tidy(); write(); };
 
 /* ---------------- XP, streak ---------------- */
 X.addXP = (n, why) => {
@@ -408,6 +469,8 @@ X.hereKey = () => location.hash.slice(1) || '/today';
 X.go = h => { if (location.hash === h) X.render(); else location.hash = h; };
 let cleanup = null;
 X.onLeave = fn => { cleanup = fn; };
+// tab khác vừa lưu tiến độ: trang tổng quan thì vẽ lại cho số mới; trang đang làm bài thì để yên, không cắt ngang
+X.onSync = () => { if (/^\/(today|progress|path(\/\w+)?|tests|lab|vocab|errors(\/\w+)?|library(\/\w+)?|skills|coach)?$/.test(X.hereKey())) X.render(); };
 const HUB = /^\/(today|tests|lab|path(\/\w+)?|unit\/\w+|library(\/\w+)?|vocab|skills|progress|errors)$/, SCROLL = {};
 // nội dung có thể vẽ chậm (ảnh, dữ liệu) → thử cuộn lại vài lần cho tới khi trang đủ dài
 const restoreScroll = (y, h) => { let n = 0; const go = () => { if (X.curHash !== h) return; if (document.documentElement.scrollHeight - innerHeight >= y - 4 || n > 8) { window.scrollTo(0, y); return; } n++; setTimeout(go, 60); }; requestAnimationFrame(go); };

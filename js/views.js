@@ -562,7 +562,7 @@ X.route(/^\/settings$/, view => {
       ${/admin/.test(location.search) || (() => { try { return localStorage.getItem('tooez.admin'); } catch (e) { return 0; } })() ? `<a class="btn sm" href="#/images">${icon('scan')} Mở danh sách ảnh</a>` : ''}</div>
     <div class="card sec"><div class="h3" style="margin-bottom:6px">Dữ liệu học tập</div>
       <p class="small muted" style="margin:0 0 12px">Tiến độ đang lưu trên trình duyệt của máy này. Sao lưu ra file để chuyển máy hoặc gửi coach xem.</p>
-      <div class="row btn-row"><button class="btn" id="st-exp">${icon('dl')} Tải file sao lưu</button><label class="btn">Khôi phục từ file<input type="file" accept=".json" id="st-imp" hidden></label><span class="grow"></span><button class="btn ghost" id="st-reset" style="color:var(--red)">Xóa toàn bộ tiến độ</button></div><div class="small faint" style="margin-top:8px">Đang học cùng coach? Gửi file sao lưu cho coach để coach xem Sổ lỗi và kết quả của bạn.</div></div>
+      <div class="row btn-row"><button class="btn" id="st-exp">${icon('dl')} Tải file sao lưu</button><label class="btn">Khôi phục từ file<input type="file" accept=".json" id="st-imp" hidden></label><button class="btn" id="st-link">${icon('share')} Mang sang máy / trình duyệt khác</button><span class="grow"></span><button class="btn ghost" id="st-reset" style="color:var(--red)">Xóa toàn bộ tiến độ</button></div><div class="small faint" style="margin-top:8px">Đang học cùng coach? Gửi file sao lưu cho coach để coach xem Sổ lỗi và kết quả của bạn.</div></div>
     <div class="sec">${X.donateBox ? X.donateBox(true) : ''}</div>${X.tmNote ? X.tmNote() : ''}</div>`;
   $$('[data-p]', view).forEach(i => i.onchange = () => { p[i.dataset.p] = i.type === 'number' ? +i.value : i.value.trim(); X.save(); X.renderSide(); X.toast('Đã lưu'); });
   $$('#st-focus button', view).forEach(b => b.onclick = () => { b.classList.toggle('on'); p.focus = $$('#st-focus button.on', view).map(x => x.dataset.k); X.save(); });
@@ -583,7 +583,8 @@ X.route(/^\/settings$/, view => {
   $('#st-vm', view).onchange = e => { p.voiceM = e.target.value; X.save(); X.TTS.speak('Hello, this is the male voice.', { sex: 'M' }); };
   $('#st-test', view).onclick = () => { const w = X.TTS.pick('W'), m = X.TTS.pick('M'); $('#st-vc', view).textContent = w ? `Nữ: ${w.name} - Nam: ${m ? m.name : '—'}` : 'Không thấy giọng tiếng Anh'; X.TTS.play([{ s: 'W', t: 'Could you send me the revised schedule by Friday?' }, { s: 'M', t: "Sure, I'll e-mail it this afternoon." }]); };
   $('#st-exp', view).onclick = () => X.downloadBackup();
-  $('#st-imp', view).onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { X.importData(t); X.toast('Đã khôi phục'); X.render(); } catch (err) { X.toast(err.message); } }); };
+  $('#st-link', view).onclick = () => X.shareProgress();
+  $('#st-imp', view).onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { X.mergeData(t); X.toast('Đã khôi phục: gộp bài trong file với tiến độ đang có, không mất bài nào'); X.render(); } catch (err) { X.toast(err.message); } }); };
   $('#st-reset', view).onclick = () => { if (confirm('Xóa toàn bộ tiến độ trên máy này? Không hoàn tác được.')) { X.resetAll(); location.hash = '#/today'; location.reload(); } };
 });
 })();

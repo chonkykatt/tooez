@@ -30,7 +30,7 @@ const NAV = [
   ['/path', 'path', 'Lộ trình', '2 - Học'], ['/vocab', 'words', 'Kho từ vựng'],
   ['/lab', 'lab', 'Lab phản xạ', '3 - Luyện'],
   ['/errors', 'err', 'Sổ lỗi', '4 - Chữa'],
-  ['/progress', 'chart', 'Tiến độ & kỹ năng', 'Theo dõi & tra cứu'], ['/library', 'book', 'Thư viện kiến thức'], ['/coach', 'coach', 'Học cùng coach'], ['/settings', 'user', 'Hồ sơ'],
+  ['/progress', 'chart', 'Tiến độ & kỹ năng', 'Theo dõi & tra cứu'], ['/library', 'book', 'Sổ tay ôn nhanh'], ['/coach', 'coach', 'Học cùng coach'], ['/settings', 'user', 'Hồ sơ'],
 ];
 const navOn = (h, r) => h.startsWith(r) || (r === '/path' && (h.startsWith('/unit') || h.startsWith('/st/'))) || (r === '/progress' && h.startsWith('/skill')) || (r === '/tests' && h.startsWith('/exam')) || (r === '/library' && (h.startsWith('/p1lib') || h.startsWith('/deck') || h.startsWith('/lesson')));
 X.renderSide = (h = location.hash.slice(1)) => {
@@ -164,13 +164,13 @@ X.route(/^\/lesson\/(.+)$/, async (view, id) => {
   // bài tiếp theo trong cùng Part (theo thứ tự Thư viện), hết thì về Thư viện
   const allL = ((X.libUnits && X.libUnits(meta.pk)) || X.UNITS[meta.pk] || []).flatMap(u => u.lessons.map(l => ({ id: l.id, title: l.title, unit: u })));
   const nx = allL[allL.findIndex(l => l.id === id) + 1];
-  const nextSt = nx ? { href: '#/lesson/' + nx.id, label: 'Bài tiếp', t: nx.title.replace(/^[A-G]?\d+(\.\d+)*\.\s*/, '') } : { href: '#/library/' + meta.pk, label: 'Về Thư viện' };
+  const nextSt = nx ? { href: '#/lesson/' + nx.id, label: 'Bài tiếp', t: nx.title.replace(/^[A-G]?\d+(\.\d+)*\.\s*/, '') } : { href: '#/library/' + meta.pk, label: 'Về Sổ tay' };
   const done = !!S().lessons[id];
   // Bài đọc thuộc Thư viện: mặc định quay về Thư viện của Part. Chỉ khi mở từ một unit trong Lộ trình mới quay về unit đó.
   const ph = X.prevHash || ''; if (/^\/(unit|st|path)\//.test(ph)) X.lessonBack = ph; else if (!/^\/lesson\//.test(ph)) X.lessonBack = null;
   const fromLib = !X.lessonBack;
   view.innerHTML = `<div class="page"><div class="lesson"><article>
-    ${fromLib ? `<a href="#/library/${meta.pk}" class="small">${icon('back')} Thư viện kiến thức - ${part.n}</a>` : `<a href="#${X.lessonBack}" class="small">${icon('back')} Về Lộ trình - ${part.n}</a>`}
+    ${fromLib ? `<a href="#/library/${meta.pk}" class="small">${icon('back')} Sổ tay ôn nhanh - ${part.n}</a>` : `<a href="#${X.lessonBack}" class="small">${icon('back')} Về Lộ trình - ${part.n}</a>`}
     ${(() => { const ul = allL.filter(l => l.unit.id === meta.unit.id), k = ul.findIndex(l => l.id === id); return `<div class="kicker" style="margin-top:14px">Bài ${k >= 0 ? k + 1 : meta.i + 1}/${k >= 0 ? ul.length : meta.unit.lessons.length}</div>`; })()}
     <h1 class="h1">${esc(L.title.replace(/^[A-G]?\d+(\.\d+)*\.\s*/, ''))}</h1>
     <div class="prose" id="ls-body">${L.html}</div>
@@ -207,13 +207,13 @@ const LIB_SKIP_L = /^(Nền tảng tư duy Part 1|Collocation Part 1|Vocabulary 
 X.libUnits = pk => (X.UNITS[pk] || []).filter(u => !LIB_SKIP_U.has(u.id)).map(u => ({ ...u, lessons: u.lessons.filter(l => !LIB_SKIP_L.test(l.title)) })).filter(u => u.lessons.length);
 X.route(/^\/library(?:\/(\w+))?$/, (view, pk) => {
   pk = pk || 'aha';
-  const tabs = `<div class="part-tabs"><a class="part-tab ${pk === 'aha' ? 'on' : ''}" href="#/library/aha"><b>Aha!</b><small>${(window.AHA || []).reduce((a, g) => a + g.items.length, 0)} insight</small></a>${X.PARTS.map(p => `<a class="part-tab ${p.k === pk ? 'on' : ''}" href="#/library/${p.k}"><b>${p.n}</b><small>${X.libUnits(p.k).reduce((a, u) => a + u.lessons.length, 0)} bài</small></a>`).join('')}</div>`;
-  const head = `<div class="stephd"><span class="stephd-no" style="background:var(--ink-soft)">Tra cứu</span><span class="grow small">Không phải một bước học riêng: kiến thức ở đây đã nằm trong <a href="#/path">Lộ trình</a>. Vào đây khi muốn tra lại một chủ đề, hoặc đọc trước khi làm đề.</span></div><div class="kicker">Thư viện kiến thức</div><h1 class="h1">Phương pháp, tư duy làm bài và những cú “Aha!”</h1>
-    <p class="lead">Ở đây chỉ có cách làm bài, cách đề bẫy và vì sao cách đó hiệu quả. Từ vựng học ở <a href="#/vocab">Kho từ vựng</a>.</p>`;
+  const tabs = `<div class="part-tabs"><a class="part-tab ${pk === 'aha' ? 'on' : ''}" href="#/library/aha"><b>Aha!</b><small>${(window.AHA || []).reduce((a, g) => a + g.items.length, 0)} insight</small></a>${X.PARTS.map(p => `<a class="part-tab ${p.k === pk ? 'on' : ''}" href="#/library/${p.k}"><b>${p.n}</b><small>${((X.libData && X.libData(p.k) || {}).topics || []).length} chủ đề</small></a>`).join('')}</div>`;
+  const head = `<div class="stephd"><span class="stephd-no" style="background:var(--ink-soft)">Xem lại</span><span class="grow small">Chỗ ôn nhanh, không phải chỗ học. Học chính theo thứ tự ở <a href="#/path">Lộ trình</a>; vào đây để lướt lại một chủ đề đã học, ví dụ trước hôm thi.</span></div><div class="kicker">Sổ tay ôn nhanh</div><h1 class="h1">Xem lại cách làm bài và những cú “Aha!”</h1>
+    <p class="lead">Mở chủ đề nào là xem lại thẻ ngay, không có bài luyện hay kiểm tra. Từ vựng ôn ở <a href="#/vocab">Kho từ vựng</a>.</p>`;
   if (pk === 'aha') return drawAha(view, head + tabs);
   const part = X.PARTS.find(p => p.k === pk) || X.PARTS[0];
   const p1 = X.libTop && X.libData && X.libData(part.k);
-  view.innerHTML = `<div class="page">${head}${tabs}${p1 ? `<div style="margin-top:18px">${X.libTop(part.k)}</div>` : ''}
+  view.innerHTML = `<div class="page">${head}${tabs}${p1 ? `<div style="margin-top:18px" id="lib-top">${X.libTop(part.k)}</div>` : ''}
     ${p1 ? `<details class="lib-full" ${['p1', 'p2', 'p34', 'p5', 'p6', 'p7'].includes(part.k) ? 'hidden' : 'style="margin-top:30px"'}><summary><b>Bản đọc đầy đủ</b> <span class="small muted">tài liệu gốc, đọc khi cần tra cứu sâu</span></summary>` : ''}
     <div class="row" style="margin:16px 0"><input class="inp" id="lib-q" placeholder="Tìm trong tên bài của ${part.n}…" style="max-width:380px"></div>
     <div id="lib-list" class="grid g2"></div>${p1 ? '</details>' : ''}</div>`;
@@ -225,6 +225,15 @@ X.route(/^\/library(?:\/(\w+))?$/, (view, pk) => {
     }).join('') || '<div class="empty">Không tìm thấy bài.</div>';
   };
   draw(''); $('#lib-q', view).oninput = e => draw(e.target.value.trim().toLowerCase());
+  // Sổ tay: danh sách chủ đề lên đầu, phần "cách nghĩ + 4 bước" gập lại (đã học ở Bài 1 của Lộ trình)
+  const top = $('#lib-top', view), h2 = top && [...top.querySelectorAll('h2')].find(h => /Học nhanh/.test(h.textContent));
+  if (top && h2) {
+    h2.textContent = 'Chủ đề để xem lại'; h2.style.marginTop = '6px';
+    const det = document.createElement('details'); det.className = 'card lib-core'; det.innerHTML = '<summary><b>Cách nghĩ và phương pháp 4 bước</b> <span class="small muted">- Bài 1 trong Lộ trình</span></summary>';
+    const body = document.createElement('div'); body.style.marginTop = '14px'; det.appendChild(body);
+    [...top.children].forEach(c => { if (c === h2 || h2.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING) return; body.appendChild(c); });
+    top.appendChild(det);
+  }
 });
 function drawAha(view, top) {
   const G = window.AHA || [];

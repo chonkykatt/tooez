@@ -139,6 +139,20 @@ function unitRow(u, cur) {
       <span class="ustars">${[1, 2, 3].map(i => `<b class="${i <= sc ? 'on' : ''}">★</b>`).join('')}</span><span class="small faint">${u.final ? 'Tổng hợp' : `~${sts.reduce((a, k) => a + ST.find(s => s.k === k).min, 0)} phút`}</span></span></a>`;
 }
 
+/* Aha! đi kèm từng bài: insight liên quan nhất của đúng Part đó (+ tư duy chung) */
+const AHA_PICK = { p1: { asp: 'being', evidence: 'nhìn thấy', frame: 'nhìn thấy' }, p2: { indirect: 'thẳng', request: 'Why don', traps: 'Lỡ mất', statement: 'thẳng' },
+  p34: { order: 'thứ tự', signals: 'but', implied: 'ngụ ý', preread: 'Đọc có mục đích', traps: 'but' }, p5: { wordform: 'vị trí', conn: 'Giới từ', vocab: 'So nghĩa', verb: 'vị trí' },
+  p6: { tense: 'Thì', insert: 'điền cả câu', links: 'điền cả câu', conn: 'Giới từ' }, p7: { qtypes: 'câu hỏi trước', anchor: 'câu hỏi trước', multi: 'Bài kép', para: 'So nghĩa', syn: 'So nghĩa' } };
+const AHA_G = { p1: 'Part 1', p2: 'Part 2', p34: 'Part 3-4', p5: 'Part 5', p6: 'Part 6', p7: 'Part 7' };
+const ahaFor = u => {
+  const G = window.AHA || [], all = G.flatMap((g, gi) => g.items.map((c, ci) => ({ ...c, g: g.g, k: gi + '-' + ci })));
+  const mine = all.filter(c => AHA_G[u.pk] && c.g.startsWith(AHA_G[u.pk])), gen = all.filter(c => /chung/i.test(c.g));
+  if (u.core) return gen.filter(c => /chắc|giãn cách/i.test(c.t)).slice(0, 2);
+  const kw = (AHA_PICK[u.pk] || {})[u.deck], hit = kw && all.find(c => (c.t + ' ' + c.why).includes(kw));
+  const pool = [...mine, ...gen], n = P[u.pk].units.indexOf(u);
+  return [hit || pool[n % pool.length]].filter(Boolean);
+};
+const ahaHtml = u => { const L = ahaFor(u); return L.length ? `<div class="sec"><div class="kicker" style="margin-bottom:8px">💡 Aha! cho bài này</div>${L.map(c => `<div class="card aha-u"><div class="aha-t">${esc(c.t)}</div><div class="small">${c.why}</div>${c.ex && c.ex.length ? `<div class="small muted" style="margin-top:6px">${c.ex.map(esc).join('<br>')}</div>` : ''}${c.limit ? `<div class="small" style="margin-top:6px"><b>Khi nào không đúng:</b> ${esc(c.limit)}</div>` : ''}</div>`).join('')}<div class="small muted" style="margin-top:8px">Xem tất cả ở <a href="#/library/aha">Sổ tay ôn nhanh</a>.</div></div>` : ''; };
 /* ---------- UNIT view ---------- */
 X.route(/^\/unit\/(\w+)$/, (view, uid) => {
   const u = unitById[uid]; if (!u) return X.go('#/path');
@@ -155,7 +169,8 @@ X.route(/^\/unit\/(\w+)$/, (view, uid) => {
     <div class="stlist">${sts.map((k, i) => { const s = ST.find(x => x.k === k), r = rec(u.id, k);
       const meta = k === 'vocab' ? `${learnedW}/${words.length} từ đã học - mỗi lượt 8 từ` : k === 'drill' ? `${drill.length} câu trong kho` : k === 'learn' ? (u.core ? 'Cách nghĩ + quy trình 4 bước' : `${u.deck ? ((DECK(u.pk).topics.find(t => t.id === u.deck) || {}).cards || []).length : u.cards.length} thẻ - khái niệm, ví dụ, thử ngay`) : u.final ? `${Math.min(drill.length, finalSize(u))} câu` : `10 câu`;
       return `<a class="stc ${r?.done ? 'done' : ''} ${k === nextK ? 'next' : ''}" style="--sc:${{ learn: 'var(--sky)', vocab: 'var(--gold)', drill: 'var(--ember)', check: 'var(--syn)' }[k]}" href="${stHref(u, k)}"><span class="sn">${r?.done ? icon('check') : i + 1}</span><span class="grow"><b>${s.n}</b><span class="small muted"> - ${meta}${r?.best != null ? ` - tốt nhất ${r.best}%` : ''}</span><div class="small faint">${s.d}</div></span><span class="btn sm ${k === nextK ? 'pri' : ''}">${r?.done ? 'Làm lại' : 'Bắt đầu'}</span></a>`; }).join('')}</div>
-    ${u.lib && u.lib.length ? `<div class="small muted sec">Muốn đọc kỹ hơn: ${u.lib.map(l => `<a href="#/lesson/${l}">bài đọc trong Thư viện</a>`).join(', ')}.</div>` : ''}
+    ${PART_OF[u.pk] && !u.final ? ahaHtml(u) : ''}
+    ${u.lib && u.lib.length ? `<div class="small muted sec">Muốn đọc kỹ hơn: ${u.lib.map(l => `<a href="#/lesson/${l}">bài đọc thêm</a>`).join(', ')}.</div>` : ''}
     ${passed(u) && nextU ? `<div class="row sec"><a class="btn pri" href="#/unit/${nextU.id}">${UL(u.pk)} ${nextU.no}: ${esc(nextU.t)} ${icon('arrow')}</a></div>` : ''}</div>`;
 });
 const finalSize = u => u.pk === 'p2' ? 25 : u.pk === 'p5' ? 30 : u.pk === 'p6' ? 16 : u.pk === 'p34' ? 24 : 20;

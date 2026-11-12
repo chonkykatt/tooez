@@ -80,7 +80,7 @@ const deckRoute = (view, pk, id) => {
     X.TTS.stop(); persist();
     const C = T.cards[i], last = i === T.cards.length - 1, need = C.t === 'check' && answered[i] === undefined;
     view.innerHTML = `<div class="page"><div class="deck">
-      <div class="qz-top"><a class="icon-btn" href="${backHref}">${icon('x')}</a><div><div class="kicker">${esc(part.n)} - ${fromLib ? 'Thư viện' : 'Lộ trình'}</div><div class="h3">${T.icon} ${esc(T.t)}</div></div>
+      <div class="qz-top"><a class="icon-btn" href="${backHref}">${icon('x')}</a><div><div class="kicker">${esc(part.n)} - ${fromLib ? 'Sổ tay' : 'Lộ trình'}</div><div class="h3">${T.icon} ${esc(T.t)}</div></div>
         <div class="dots">${T.cards.map((_, k) => `<i class="${k < i ? 'on' : k === i ? 'cur' : ''}"></i>`).join('')}</div></div>
       <div class="q-card deck-card">${card(C)}</div>
       <div class="row" style="margin-top:14px"><button class="btn" id="dk-prev" ${i ? '' : 'disabled'}>${icon('back')} Trước</button><span class="grow"></span>
@@ -122,7 +122,7 @@ const deckRoute = (view, pk, id) => {
     if (first) X.addXP(5, 'Học xong chủ đề');
     const idx = d.topics.indexOf(T), nx = d.topics[idx + 1];
     const pd = !fromLib && X.deckDone && X.deckDone(pk, id);   // mở từ Lộ trình: học xong thì luyện ngay đúng dạng này
-    X.celebrate ? X.celebrate({ title: 'Xong chủ đề!', sub: `${T.t}${checks ? ` - đúng ${ok}/${checks} câu thử` : ''}`, stars: checks ? (ok === checks ? 3 : ok ? 2 : 1) : 3, xp: first ? 5 : 0, btn: pd ? pd.label : nx ? `Tiếp: ${nx.t}` : 'Về Thư viện', href: pd ? pd.href : nx ? deckHref(pk, nx.id) : '#/library/' + pk }) : X.go(pd ? pd.href : '#/library/' + pk);
+    X.celebrate ? X.celebrate({ title: 'Xong chủ đề!', sub: `${T.t}${checks ? ` - đúng ${ok}/${checks} câu thử` : ''}`, stars: checks ? (ok === checks ? 3 : ok ? 2 : 1) : 3, xp: first ? 5 : 0, btn: pd ? pd.label : nx ? `Tiếp: ${nx.t}` : 'Về Sổ tay', href: pd ? pd.href : nx ? deckHref(pk, nx.id) : '#/library/' + pk }) : X.go(pd ? pd.href : '#/library/' + pk);
   };
   draw();
 };

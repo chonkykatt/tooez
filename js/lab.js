@@ -307,6 +307,8 @@ function run(view, L, mode, only, resume) {
     $$('[data-o]', view).forEach(b => b.onclick = () => answer(+b.dataset.o));
     const qb = $('[data-quit]', view); if (qb) qb.onclick = () => X.sessDel(sKey);
     const pl = $('#lb-play', view); if (pl) { pl.onclick = () => TTS.play(R.audio); setTimeout(() => TTS.play(R.audio), 250); }
+    // bài nghe: giấu lời thoại cho đến khi chọn xong (như đề thật)
+    if (R.audio) $$('#lb-q .dlg', view).forEach(d => { d.classList.add('dlg-hide'); d.insertAdjacentHTML('beforebegin', '<div class="dlg-ph">🎧 Nghe đoạn hội thoại. Lời thoại hiện sau khi bạn chọn.</div>'); });
     st.t = Date.now();
     if (R.scan && mode === 'speed') setTimeout(() => { const f = $('.flash', view); if (f && !st.answered) f.classList.add('hidden-q'); }, (L.time || 1.5) * 1000 * 1.6);
     if (lim) {
@@ -321,6 +323,7 @@ function run(view, L, mode, only, resume) {
     st.ms += ms; if (ok) { st.ok++; st.combo = (st.combo || 0) + 1; } else { st.wrong.push(R.key); st.combo = 0; }
     $$('[data-o]', view).forEach((b, j) => { b.disabled = true; if (j === R.a) b.classList.add('ok'); else if (j === k) b.classList.add('bad'); });
     const f = $('.flash', view); if (f) f.classList.remove('hidden-q');
+    $$('#lb-q .dlg-hide', view).forEach(d => d.classList.remove('dlg-hide')); $$('#lb-q .dlg-ph', view).forEach(d => d.remove());
     X.react && X.react(ok, $$('[data-o]', view)[ok ? R.a : Math.max(0, k)], st.combo);
     const fb = $('#lb-fb', view);
     fb.innerHTML = `<div class="fb ${ok ? 'ok' : 'bad'}"><b class="h">${ok ? `Đúng - ${(ms / 1000).toFixed(1)}s` : k === -1 ? 'Hết giờ' : 'Chưa đúng'}</b>${R.after ? `<div>${R.after}</div>` : ''}</div>

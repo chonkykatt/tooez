@@ -18,8 +18,8 @@ const LAB_HIDE = new Set(['p1-words', 'p1-asp']);   // bản chữ cũ, đã tha
 const P1_CATS = [['', 'Tất cả'], ['Hành động và trạng thái của người', 'Hành động'], ['Trang phục và đồ mang theo', 'Trang phục'], ['Địa điểm và bối cảnh', 'Địa điểm'], ['Vị trí và bố cục', 'Vị trí'], ['Đồ vật theo bối cảnh', 'Đồ vật'], ['Trạng thái của vật', 'Trạng thái vật']];
 
 /* ---- ngữ pháp câu tả tranh: tạo câu đúng (bị động) và bẫy ---- */
-const IRR = { do: 'done', hold: 'held', sweep: 'swept', put: 'put', cut: 'cut', hang: 'hung', lead: 'led', set: 'set', ride: 'ridden', take: 'taken', give: 'given', read: 'read', sell: 'sold', buy: 'bought', drive: 'driven', throw: 'thrown', build: 'built', feed: 'fed', dig: 'dug', lay: 'laid', shake: 'shaken', write: 'written', draw: 'drawn', hit: 'hit', bring: 'brought', sew: 'sewn', show: 'shown', spread: 'spread', grind: 'ground', fly: 'flown' };
-const NO_PASS = /^(wearing|holding|having|sitting|standing|waiting|walking|looking|facing|leaning|playing|watching|talking|riding|crossing|browsing|attending|entering|exiting|approaching|boarding|addressing|leaving|visiting|admiring|greeting|helping|using|reaching|raising|shaking|pointing|giving|answering)$/;
+const IRR = { do: 'done', hold: 'held', sweep: 'swept', put: 'put', cut: 'cut', hang: 'hung', lead: 'led', set: 'set', ride: 'ridden', take: 'taken', give: 'given', read: 'read', sell: 'sold', buy: 'bought', drive: 'driven', throw: 'thrown', build: 'built', feed: 'fed', dig: 'dug', lay: 'laid', shake: 'shaken', write: 'written', draw: 'drawn', hit: 'hit', bring: 'brought', sew: 'sewn', show: 'shown', spread: 'spread', grind: 'ground', fly: 'flown', make: 'made', wear: 'worn', leave: 'left', choose: 'chosen', see: 'seen', pay: 'paid', send: 'sent', keep: 'kept', find: 'found', tell: 'told' };
+const NO_PASS = /^(wearing|holding|having|sitting|standing|waiting|walking|looking|facing|leaning|playing|watching|talking|riding|crossing|browsing|attending|entering|exiting|approaching|boarding|addressing|leaving|visiting|admiring|greeting|helping|using|reaching|raising|shaking|pointing|giving|answering|passing|climbing)$/;
 // động từ gần nghĩa: không dùng để làm bẫy "sai hành động" cho nhau
 const VCLUS = [/^(wip|clear|sweep|mopp|clean|scrubb|polish|vacuum|wash|dust)/, /^(repair|fix|inspect|examin|check|adjust|install|test|servic)/, /^(look|review|read|brows|study|watch|examin|check|scann)/, /^(carry|hold|lift|mov|push|pull|load|unload|deliver|transport)/, /^(talk|convers|discuss|chat|speak|meet)/, /^(arrang|organiz|stack|sort|stock|display|set)/, /^(cut|chopp|slic|trimm|saw)/, /^(pour|serv|fill)/, /^(writ|sign|fill|tak)/, /^(eat|din|drink|sipp)/, /^(paint|decorat)/, /^(build|construct|assembl)/, /^(select|choos|pick|buy|purchas|shop)/];
 const sameClus = (a, b) => VCLUS.some(r => r.test(a) && r.test(b));
@@ -30,6 +30,7 @@ const v3OfIng = ing => {
   if (/([bdgmnprt])\1$/.test(b)) { b = b.slice(0, -1); dbl = true; }
   else if (!VSET.has(b) && (VSET.has(b + 'e') || /(c|v|z|at|ur|ag|in|ar|ac|as)$/.test(b))) b += 'e';
   if (IRR[b]) return IRR[b];
+  if (IRR[b + 'e']) return IRR[b + 'e'];
   if (dbl) return b + b.slice(-1) + 'ed';
   if (/e$/.test(b)) return b + 'd';
   if (/[^aeiou]y$/.test(b)) return b.slice(0, -1) + 'ied';
@@ -38,7 +39,7 @@ const v3OfIng = ing => {
 const PREP = '(?:on|in|into|onto|at|to|from|with|across|along|down|up|under|over|behind|near|next|for|by|off|inside|outside|around|through|toward|beside|against|out)';
 const RX_ACT = new RegExp(`^(?:A|An|The|Some|Two|Several|They|He|She|[A-Z]\\w*) ?[\\w ]*? (is|are) (\\w+ing) (a|an|the|some|his|her|their|two) ([a-z ]+?)((?: ${PREP}\\b.*)?)\\.$`);
 const passiveOf = ex => {
-  const m = ex.match(RX_ACT); if (!m || NO_PASS.test(m[2]) || / of$/.test(m[4])) return null;
+  const m = ex.match(RX_ACT); if (!m || NO_PASS.test(m[2]) || / of$/.test(m[4]) || /^ with some /.test(m[5] || '')) return null;
   const obj = m[4].trim();
   if (/\b(away|back|while|together|apart|up|down|out|off|around)\b/.test(obj) || /\bwhile\b/.test(m[5] || '')) return null;   // cụm có trạng từ chen giữa: đổi bị động dễ sai
   const head = obj.split(' of ')[0].split(' ').pop(), pl = /s$/.test(head) && !/(ss|us)$/.test(head);
@@ -46,7 +47,9 @@ const passiveOf = ex => {
   return `${det} ${obj} ${pl ? 'are' : 'is'} being ${v3OfIng(m[2])}${m[5] || ''}.`;
 };
 const PERSON = /\b(man|men|woman|women|person|people|someone|boy|girl|child|children|kid|worker|workers|chef|cook|customer|guest|hand|hands|couple|group|crowd|staff|employee|tourist|visitor|he|she|they|his|her|their|server|waiter|shopper|diner|passenger|pedestrian|player|musician|hiker|mechanic|vendor|businesswoman|businessman|adult|individual|gardener|carpenter|janitor|clerk|technician|student)s?\b/i;
-const noPerson = w => { const alt = (window.IMGALT || {})[X.imgSlug(w)]; return !!alt && !PERSON.test(alt) && !PERSON.test(w.ex[0] || ''); };
+// có người trong ảnh hay không: ưu tiên danh sách đã kiểm tra bằng mắt (data/imgpeople.js), thiếu mới đoán theo mô tả ảnh
+const hasPeople = w => { const f = (window.IMGPEOPLE || {})[X.imgSlug(w)]; if (f !== undefined) return !!f; const alt = (window.IMGALT || {})[X.imgSlug(w)]; return !alt || PERSON.test(alt) || PERSON.test(w.ex[0] || ''); };
+const noPerson = w => !hasPeople(w);
 // bẫy "is being": tranh không có người mà câu nói vật đang bị làm
 const beingTrap = (w, ex) => {
   if (!noPerson(w) || / being /.test(ex)) return null;
@@ -64,7 +67,7 @@ const sameSubjTrap = (w, ex, pool, scene, avoid) => {
   const wantP = isPersonSubj(ex), head = (subjOf(ex).split(' ').pop() || '').toLowerCase();
   const exS = stems(ex);
   const c = pool.filter(x => { const t = x.ex && x.ex[0]; if (!t || t === ex || (avoid || []).includes(t)) return false;
-    return x !== w && x.group !== w.group && isPersonSubj(t) === wantP && !overlap(stems(t), scene) && !overlap(stems(t), exS); });
+    return x !== w && x.group !== w.group && isPersonSubj(t) === wantP && !overlap(stems(t), scene) && !overlap(stems(t), exS) && !poseRisk(w, t); });
   const same = c.filter(x => (subjOf(x.ex[0]).split(' ').pop() || '').toLowerCase() === head);
   const pick = shuffle(same.length ? same : c)[0];
   return pick ? pick.ex[0] : null;
@@ -90,17 +93,20 @@ const PSWAP = [[' on top of ', ' underneath '], [' in front of ', ' behind '], [
 const POSS = s => /\b(man|boy|gentleman|he)\b/i.test(s) && !/\b(men|people|women)\b/i.test(s) ? 'his' : /^(an?|the) /i.test(s) && !/\b(men|people|women|couple)\b/i.test(s) ? 'her' : 'their';
 const stemOf = v => v.split(' ')[0].replace(/ing$/, '').replace(/(.)\1$/, '$1');
 function sceneTraps(w, ex) {
-  const alt = ((window.IMGALT || {})[X.imgSlug(w)] || '').toLowerCase(), low = ex.toLowerCase(), out = [];
+  const alt = (((window.IMGALT || {})[X.imgSlug(w)] || '') + ' ' + ((window.IMGSEE || {})[X.imgSlug(w)] || '')).toLowerCase(), low = ex.toLowerCase(), out = [];
   const m = ex.match(/^(.+?) (is|are) (\w+ing)\b/), person = isPersonSubj(ex) && m;
   const subj = person ? m[1] : 'Someone', be = person ? m[2] : 'is', none = !person && noPerson(w);
   const used = new Set(); const curV = m ? stemOf(m[3]) : '';
   const posed = /\b(sitting|seated|standing|lying|kneeling|crouching|leaning)\b/.test(low);
   const SOLO = /^(phone|laptop|computer|cup|bag|suitcase|menu|book|umbrella|camera|microphone|map|folder|bicycle|bike|lamp)$/;
   if (person || none) shuffle(NV.slice()).forEach(([n, v, own]) => {
-    if (out.length >= 2 || used.has(n.replace(/s$/, '')) || (be === 'are' && SOLO.test(n))) return;
+    const nk = n === 'staircase' ? 'stair' : n === 'whiteboard' ? 'board' : n.replace(/(x|ch|sh)es$/, '$1').replace(/s$/, '');
+    if (out.length >= 2 || used.has(nk) || (be === 'are' && SOLO.test(n))) return;
+    if (n === 'board' && /\b(cutting|wooden|chopping) board\b/.test(low)) return;
     const re = new RegExp(`\\b${n}\\b`); if (!re.test(alt) && !re.test(low)) return;
     const st = stemOf(v); if (st === curV || alt.includes(st) || low.includes(st)) return;
-    used.add(n.replace(/s$/, '')); out.push({ t: `${subj} ${be} ${v} ${own && person ? (/\bwoman|girl|lady\b/i.test(subj) ? 'her' : POSS(subj)) : 'the'} ${n}.`, why: none ? 'tranh không có người' : 'có trong tranh, sai hành động' });
+    if (/^(stairs|staircase)$/.test(n) && (/\b(walking|heading|going|coming|running|stepping|riding)\b/.test(low) || /escalator/.test(low + alt))) return;   // đang đi trên cầu thang / thang cuốn: "climbing" có thể cũng đúng
+    used.add(nk); out.push({ t: `${subj} ${be} ${v} ${own && person ? (/\bwoman|girl|lady\b/i.test(subj) ? 'her' : POSS(subj)) : 'the'} ${n}.`, why: none ? 'tranh không có người' : 'có trong tranh, sai hành động' });
   });
   for (const [a, b, need] of PSWAP) { if (!low.includes(a)) continue; if (/^ (up|down) $/.test(a) && !/\b(walking|climbing|going|heading|running|coming|riding|looking|carrying \w+) (up|down) (?:a |an |the |some )?(?:\w+ )?(stairs|staircase|steps|ladder|escalator|hill|slope|ramp)\b/i.test(ex)) continue; if (/^ (into|out of) $/.test(a) && !/\b(walking|coming|going|getting|moving|running|stepping|poured|pouring|driving|heading|carrying|climbing)\b/i.test(ex)) continue; if (posed && /^ (in front of|behind) $/.test(a) && /\b(desk|computer|laptop|monitor|screen|counter|table)\b/i.test(ex)) continue; if (need && (posed || !new RegExp(a.replace(/ /g, '\\s') + need.replace(/^\(\?:/, '(?:'), 'i').test(ex))) continue;
     const t = ex.replace(new RegExp(a.replace(/ /g, '\\s'), 'i'), b); if (t !== ex) { out.push({ t, why: 'sai vị trí' }); break; } }
@@ -123,7 +129,10 @@ const GEN = new Set('some the a an is are was were be being been has have of on 
 const stems = t => new Set(String(t || '').toLowerCase().match(/[a-z]+/g)?.filter(x => x.length > 2 && !GEN.has(x)).map(x => x.slice(0, 5)) || []);
 const overlap = (A, B) => { for (const x of A) if (B.has(x)) return true; return false; };
 // Nội dung thật của ảnh: mô tả Pexels + câu mẫu + từ chính
-const sceneOf = w => stems([(window.IMGALT || {})[X.imgSlug(w)] || '', ...(w.ex || []).slice(0, 2), w.w].join(' '));
+const sceneOf = w => stems([(window.IMGALT || {})[X.imgSlug(w)] || '', (window.IMGSEE || {})[X.imgSlug(w)] || '', ...(w.ex || []).slice(0, 2), w.w].join(' '));
+// tranh có người: câu nhiễu kiểu "ai đó đang đứng / ngồi / cầm…" dễ vô tình đúng → không dùng
+const POSE = /\b(dressed|standing|sitting|seated|walking|holding|wearing|looking|smiling|talking|waiting|carrying|using|leaning|working|gathered|facing)\b/;
+const poseRisk = (w, t) => hasPeople(w) && isPersonSubj(t) && POSE.test(t);
 const picDistract = (w, pool, n, key) => {
   const bad = new Set([w.w.toLowerCase(), ...(w.syn || []).map(x => String(x).toLowerCase()), ...(w.fam || []).map(x => String(x.w || x).toLowerCase())]);
   const scene = sceneOf(w);
@@ -131,7 +140,7 @@ const picDistract = (w, pool, n, key) => {
   const PO = ['Địa điểm và bối cảnh', 'Đồ vật theo bối cảnh'];
   // với "chọn từ": nhiễu phải là từ cụ thể, nhìn ảnh là biết sai; bỏ từ tư thế chung (ảnh nào cũng có thể có) và từ gần nghĩa
   const wordOk = x => picWordOk(x) && !abstractPic(x) && !COPRESENT.has(x.w.toLowerCase()) && !(POS1(w.pos) === 'v' && sameClus(x.w.toLowerCase(), w.w.toLowerCase()));
-  const ok = x => x !== w && !bad.has(x.w.toLowerCase()) && (key ? x.group !== w.group : (x.group !== w.group || w.topic === 'Hành động và trạng thái của người')) && !(PO.includes(w.topic) && PO.includes(x.topic) && x.topic !== w.topic) && !(!key && PO.includes(w.topic) && x.topic === 'Trang phục và đồ mang theo') && (key || wordOk(x)) && !overlap(stems(x.w), scene) && (!key || x.ex && x.ex[0] && !overlap(stems(x.ex[0]), scene));
+  const ok = x => x !== w && !bad.has(x.w.toLowerCase()) && (key ? x.group !== w.group : (x.group !== w.group || w.topic === 'Hành động và trạng thái của người')) && !(PO.includes(w.topic) && PO.includes(x.topic) && x.topic !== w.topic) && !(!key && PO.includes(w.topic) && x.topic === 'Trang phục và đồ mang theo') && (key || wordOk(x)) && !overlap(stems(x.w), scene) && (!key || x.ex && x.ex[0] && !overlap(stems(x.ex[0]), scene) && !poseRisk(w, x.ex[0]));
   const sameT = !key && ['Hành động và trạng thái của người', 'Đồ vật theo bối cảnh', 'Địa điểm và bối cảnh'].includes(w.topic);
   const a = shuffle(pool.filter(x => ok(x) && POS1(x.pos) === POS1(w.pos) && (sameT || x.topic !== w.topic)));
   const b = shuffle(pool.filter(x => ok(x) && x.topic !== w.topic && !a.includes(x)));
@@ -142,7 +151,7 @@ const ABSTRACT_W = /^(distance|background|foreground|scenery|structure|item|equi
 const abstractPic = w => /^(adj|adv|prep)/.test(w.pos || '') || w.topic === 'Vị trí và bố cục' || w.topic === 'Trạng thái của vật' || ABSTRACT_W.test(w.w);
 X.picRounds = L => picRounds(L);
 const sayAll = (op, ok) => op.map((t, k) => `<div${k === ok ? ' style="font-weight:700"' : ' class="muted"'}>(${'ABCD'[k]}) ${esc(t.t)}${t.why ? ` <span class="pill ${k === ok ? 'sage' : 'red'}" style="font-weight:600">${t.why}</span>` : ''}</div>`).join('');
-X._dev = { picRounds: L => picRounds(L), rounds: L => rounds(L) };   // chỉ dùng cho công cụ tạo audio
+X._dev = { picRounds: L => picRounds(L), rounds: L => rounds(L), passiveOf: e => passiveOf(e), beingTrap: (w, e) => beingTrap(w, e) };   // chỉ dùng cho công cụ tạo audio
 function picRounds(L) {
   let ws = picWords(L).filter(w => X.imgNow(w)); const pool = X.VOCAB.filter(X.hasImgSlot);
   if (L.mode === 'word' && L.cat) ws = ws.filter(w => w.topic === L.cat);
@@ -184,6 +193,7 @@ function picRounds(L) {
     if (traps.length < 3 && sw && !seen.has(sw)) { traps.push({ t: sw, why: isPersonSubj(ex) ? 'sai hành động' : 'không có trong tranh' }); seen.add(sw); }
     if (traps.length < 3) { const sw2 = sameSubjTrap(w, ex, pool, scene, [...seen]); if (sw2) { traps.push({ t: sw2, why: isPersonSubj(ex) ? 'sai hành động' : 'không có trong tranh' }); seen.add(sw2); } }
     const others = traps.length < 3 ? picDistract(w, pool.filter(x => x.ex && x.ex[0] && !seen.has(x.ex[0])), 3 - traps.length, 'ex').map(x => ({ t: x.ex[0], why: 'không có trong tranh' })) : [];
+    if (noPerson(w)) [...traps, ...others].forEach(t => { if (isPersonSubj(t.t)) t.why = 'tranh không có người'; });
     const op = shuffle([right, ...traps, ...others].slice(0, 4)); if (op.length < 4) return;
     const k = op.indexOf(right);
     out.push({ key: w.id, q: picImg(w) + '<div class="small muted" style="text-align:center">Nghe 4 câu rồi chọn câu tả đúng ảnh.</div>', opts: op.map(() => ''), a: k,

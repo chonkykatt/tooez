@@ -367,7 +367,7 @@ TTS.stop = () => { TTS.token++; if ('speechSynthesis' in window) speechSynthesis
 // lines: [{s:'M'|'W'|'Q'|'A'|'N', t}]
 TTS.play = async (lines, onLine) => {
   TTS.stop(); const tk = TTS.token;
-  const sexOf = { M: 'M', W: 'W', Q: 'W', A: 'M', N: 'W' };
+  const sexOf = { M: 'M', W: 'W', Q: 'W', A: 'M', N: 'W', S: 'W', SM: 'M' };   // S = người nói bài Part 4 (nữ), SM = người nói nam
   const langs = ['en-US', 'en-GB', 'en-AU'];
   const qLang = S.profile.accent;
   for (let i = 0; i < lines.length; i++) {

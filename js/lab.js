@@ -295,10 +295,14 @@ function rounds(L) {
 // Đáp án nhiễu không được "cũng đúng": loại đáp án trùng một phần với đáp án đúng
 // (vd. "N / V-ing" với "V-ing / N" hay "N"; "busy, unavailable" với "away, unavailable"; "khách hàng" với "hành khách")
 const VI_STOP = new Set('người cái các những một và hoặc có của được đang cho với lên xuống vào ra đi làm trước sau là bị việc sự ai gì nào'.split(' '));
+// nhóm đồng nghĩa không chung chữ nào (vd. "kiểm tra" với "xem xét kỹ"): cùng nhóm thì không làm đáp án nhiễu cho nhau
+const SYN = [/kiểm tra|xem xét|rà soát|xem lại/i, /nhấc|giơ|nâng/i, /máy móc|thiết bị/i, /tài liệu|giấy tờ|hồ sơ/i, /trống|không có người|vắng/i, /đường mòn|lối đi|con đường/i,
+  /\b(investigate|review|check|examine|inspect|look into)\b/i, /thay đổi|sửa|điều chỉnh/i];
 const comps = a => String(a).toLowerCase().split(/\s*[\/,;]\s*|\s+-\s+/).map(x => x.trim()).filter(Boolean);
 const clash = (a, b, gram) => {
   if (gram) { const tk = x => new Set(String(x).split(/[\s\/+]+/).filter(t => /^(N|V|V3|V-ing|Adj|Adv|clause)$/.test(t))); const A = tk(a); return [...tk(b)].some(t => A.has(t)); }
   const A = comps(a), B = comps(b); if (A.some(x => B.includes(x))) return true;
+  if (SYN.some(r => r.test(a) && r.test(b))) return true;
   if (/[à-ỹđ]/i.test(a + b)) { const w = x => new Set(String(x).toLowerCase().replace(/\(.*?\)/g, ' ').split(/[^a-zà-ỹđ]+/i).filter(t => t.length > 1 && !VI_STOP.has(t))); const WA = w(a); return [...w(b)].some(t => WA.has(t)); }
   return false;
 };

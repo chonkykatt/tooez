@@ -6,7 +6,7 @@ p1: { title: 'Part 1 - Photographs', units: [
   { id: 'p1u1', t: 'Objects & Equipment', vi: 'Đồ vật và thiết bị', goal: 'Gọi tên ngay đồ vật trong tranh văn phòng, cửa hàng, xưởng mà không cần dịch.',
     cards: [
       { h: 'Part 1 chấm “đối chiếu”, không chấm “hiểu tranh”', b: 'Mỗi câu mô tả gồm 4 mảnh: <b>người/vật + hành động/trạng thái + đồ vật + vị trí</b>. Sai một mảnh là sai cả câu. Vì vậy phải nhận ra đồ vật trong tích tắc để còn sức kiểm tra các mảnh khác.', ex: ['A woman is <b>typing</b> on a <b>keyboard</b>.', 'Some <b>files</b> are stacked on a <b>shelf</b>.'],
-        q: { q: 'Trong tranh có máy tính nhưng không ai dùng. Câu nào sai?', o: ['A computer is on the desk.', 'A man is using a computer.', 'A monitor has been turned off.'], a: 1, why: 'Có đồ vật ≠ đang dùng đồ vật. Không có người thao tác thì “using” sai.' } },
+        q: { q: 'Trong tranh có máy tính nhưng không ai dùng. Câu nào sai?', o: ['A computer is on the desk.', 'A man is using a computer.', 'A keyboard is in front of a monitor.'], a: 1, why: 'Có đồ vật ≠ đang dùng đồ vật. Không có người thao tác thì “using” sai.' } },
       { h: 'Học đồ vật theo bối cảnh', b: 'Nhìn bối cảnh trước (văn phòng, nhà hàng, kho…) rồi đoán sẵn đồ vật sẽ nghe. Không biết tên một vật? Bắt từ chung: <b>equipment, device, item, merchandise</b>.', ex: ['forklift → a vehicle / machinery', 'stapler, scissors → office supplies'],
         q: { q: 'Bạn không nghe ra “forklift” nhưng nghe “A worker is operating some machinery.” Câu này có thể đúng không?', o: ['Có, nếu người đó đang lái xe nâng', 'Không, vì không nghe thấy forklift'], a: 0, why: 'Đề hay dùng từ chung (machinery, equipment) thay cho tên cụ thể.' } },
     ],
@@ -142,7 +142,7 @@ p2: { title: 'Part 2 - Question-Response', units: [
   { id: 'p2u10', t: 'Similar-sounding Distractors', vi: 'Bẫy gần âm và lặp từ', goal: 'Tự động nghi ngờ đáp án lặp từ hoặc nghe giống từ trong câu hỏi.',
     cards: [
       { h: 'Nghe quen tai = nghi trước', b: 'Đáp án lặp lại từ trong câu hỏi, hoặc có từ nghe gần giống (copy/coffee, contact/contract, cone/phone) là bẫy phổ biến nhất Part 2. Không nghe kịp thì <b>loại câu quen tai trước</b>.', ex: ['Where’s the copy machine? ✗ I’d like a coffee.', 'Did you sign the contract? ✗ I’ll contact him.'],
-        q: { q: 'Bạn nghe rõ một đáp án có từ giống câu hỏi. Nên làm gì?', o: ['Chọn ngay', 'Nghi bẫy, nghe tiếp hai đáp án còn lại'], a: 1, why: 'Đáp án đúng thường không lặp từ khóa của câu hỏi.' } },
+        q: { q: 'Bạn nghe rõ một đáp án có từ giống câu hỏi. Nên làm gì?', o: ['Chọn ngay', 'Nghi bẫy, nghe tiếp hai đáp án còn lại'], a: 1, why: 'Lặp từ là kiểu bẫy rất hay gặp. Không loại ngay, nhưng phải nghe hết hai đáp án còn lại rồi mới chọn.' } },
     ],
     voc: ['Chức danh và phòng ban@Nhân sự cơ bản', 'Tuyển dụng và thay đổi nhân sự@Nhân sự cơ bản', 'Lương thưởng, đánh giá@Nhân sự cơ bản', 'Con số và chi phí@Tài chính và thanh toán', 'Thanh toán và hoàn tiền@Tài chính và thanh toán'],
     drill: i => i.part === 2 && (i.tag === 'sound' || i.tag === 'confuse') },
@@ -262,7 +262,7 @@ p5: { title: 'Part 5 - Incomplete Sentences', units: [
   { id: 'p5u6', t: 'Relative Clauses & Comparisons', vi: 'Mệnh đề quan hệ, so sánh', goal: 'Chọn who / which / whose / that và dạng so sánh nhanh, không dịch.',
     cards: [
       { h: 'Nhìn danh từ phía trước và chỗ thiếu phía sau', b: 'Người + thiếu chủ ngữ → <b>who</b>. Vật → <b>which</b>. Sau dấu phẩy không dùng <b>that</b>. Theo sau là danh từ → <b>whose</b>. So sánh: <b>than</b> → so sánh hơn; <b>the … of/in</b> → so sánh nhất.', ex: ['the building, ___ has been empty → which', 'the manager ___ office is upstairs → whose'],
-        q: { q: '“The supplier, ___ is based in Ohio, called today.”', o: ['that', 'which', 'who'], a: 2, why: 'supplier là người/công ty như người, sau dấu phẩy → who (that không dùng sau dấu phẩy).' } },
+        q: { q: '“Our sales representative, ___ is based in Ohio, called today.”', o: ['that', 'which', 'who'], a: 2, why: 'sales representative là người, sau dấu phẩy → who. that không dùng sau dấu phẩy; which dùng cho vật.' } },
     ],
     voc: [], drill: i => (i.cat === 'rel' || i.cat === 'compare') && i.part === 5 },
   { id: 'p5u7', t: 'Vocabulary in Context', vi: 'Câu từ vựng', goal: 'Tìm manh mối trong câu thay vì chọn theo cảm giác.',
@@ -419,7 +419,7 @@ window.PATH.nen = { title: 'Tầng 1 - Nền tảng', layer: 1, units: [
   { id: 'n1', t: 'Workplace Collocations', vi: 'Cụm từ công sở', goal: 'Nghe hoặc đọc nửa cụm là đoán được nửa còn lại: meet a deadline, place an order…', skills: ['vocab', 'para'],
     cards: [
       { h: 'Học cụm, không học từ lẻ', b: 'TOEIC lặp lại vài trăm cụm công sở. Biết <b>place an order</b> thì nghe “place an…” đã đoán ra, đọc nhanh hơn và bắt paraphrase dễ hơn. Mỗi cụm học kèm một cách nói khác.', ex: ['meet a deadline = finish on time', 'process a refund = give the money back', 'follow up on a request = check again later'],
-        q: { q: '“We need to ___ the deadline.”', o: ['meet', 'reach', 'make'], a: 0, why: 'meet a deadline là cụm cố định.' } },
+        q: { q: '“We need to ___ the deadline.”', o: ['meet', 'do', 'pass'], a: 0, why: 'meet a deadline (kịp hạn chót) là cụm cố định.' } },
     ],
     voc: ['Xử lý, sắp xếp@Cụm động từ hay gặp trong đáp án', 'Đăng ký, liên lạc@Cụm động từ hay gặp trong đáp án', 'Động từ công việc giấy tờ@Văn phòng và công việc hằng ngày', 'Tính từ / phân từ + giới từ@Cụm giới từ cố định (collocation)', 'Cụm giới từ / trạng ngữ@Cụm giới từ cố định (collocation)'],
     drill: i => _sk('vocab')(i) || (i.tag === 'para' && i.part === 2) },

@@ -1307,3 +1307,14 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 @media (max-width:760px){.deck .qz-top{flex-wrap:wrap}.deck .qz-top>div:not(.dots){flex:1;min-width:0}.deck .dots{flex:0 0 100%;order:3;justify-content:flex-start;gap:4px;margin-top:10px;flex-wrap:nowrap}.deck .dots i{flex:1;max-width:22px;width:auto;height:6px}}
 .flash-line{display:inline;line-height:1.7}.flash-line mark{padding:1px 4px;border-radius:5px}
 .dlg-hide{display:none}.dlg-ph{background:var(--paper-dim);border-radius:10px;padding:14px 16px;color:var(--ink-soft);font-weight:600;text-align:center}
+/* mặt sau flashcard: nền sáng, chữ đậm để dễ đọc */
+.flip .fb2{background:var(--syn-soft);color:var(--ink)}
+.flip .fb2 *{color:inherit}
+.flip .fb2 .muted,.flip .fb2 .small{color:var(--ink-soft)}
+.flip .fb2 h1,.flip .fb2 h2,.flip .fb2 .h1,.flip .fb2 .h2,.flip .fb2 b,.flip .fb2 .hw{color:var(--syn-deep)}
+/* độ tương phản: chữ mờ, nhãn bước, pill đỏ */
+:root{--ink-faint:#6F6996}
+.flip .fb2 .fb-rule{color:var(--ink-soft);font-size:16px;line-height:1.55}
+.fl-sky{background:#1F7DC2}.fl-ember{background:#DB3F5E}.fl-sun{background:#F5B81F;color:var(--ink)!important}
+.stephd-no.fl-sun{color:var(--ink)}
+.pill.red{color:#B8263F}.pill.ember{color:#B8263F}

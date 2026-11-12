@@ -381,7 +381,7 @@ function runCards(view, L) {
     const c = cards[i];
     view.innerHTML = `<div class="page"><div class="qz" style="max-width:640px"><div class="qz-top"><a class="icon-btn" href="#/lab">${icon('x')}</a><div><div class="kicker">${esc(L.title)}</div></div><div class="bar"><i style="width:${pct(i, cards.length)}%"></i></div><span class="count">${i + 1}/${cards.length}</span></div>
       <div class="flip" id="fc"><div class="in"><div class="fa"><span class="pill syn">${esc(c.tag)}</span><div class="h1" style="margin-top:14px">${esc(c.prompt)}</div><div class="small faint">Bấm để lật</div></div>
-      <div class="fb2"><div class="h1">${esc(c.answer)}</div><div style="color:#C9CBD3;margin-top:10px;max-width:440px">${esc(c.rule)}</div></div></div></div>
+      <div class="fb2"><div class="h1">${esc(c.answer)}</div><div class="fb-rule" style="margin-top:10px;max-width:440px">${esc(c.rule)}</div></div></div></div>
       <div class="row" style="justify-content:center;margin-top:18px" id="fc-b"><button class="btn" data-g="0">Chưa nhớ</button><button class="btn pri" data-g="1">Nhớ rồi</button></div></div></div>`;
     $('#fc', view).onclick = e => e.currentTarget.classList.toggle('on');
     $$('[data-g]', view).forEach(b => b.onclick = () => { if (+b.dataset.g) known++; else again.push(c); i++; draw(); });

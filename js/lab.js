@@ -257,7 +257,7 @@ function rounds(L) {
   switch (L.kind) {
     case 'pairs': {
       const all = [...new Set(items.map(x => x.a))];
-      const rs = asListen(items.map((x, i) => { const opts = shuffle([x.a, ...sample(all.filter(a => a !== x.a), 3)]); return { key: 'p' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts, a: opts.indexOf(x.a), after: `${esc(x.q)} → <b>${esc(x.a)}</b>` }; }));
+      const rs = asListen(items.map((x, i) => { const opts = shuffle([x.a, ...pickDistract(x.a, all, L.id === 'p5-pattern')]); return { key: 'p' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts, a: opts.indexOf(x.a), after: `${esc(x.q)} → <b>${esc(x.a)}</b>` }; }));
       (L.extra || []).forEach((x, i) => rs.push({ key: 'e' + i, q: `<div class="flash">${esc(x.q)}</div><div class="small muted" style="text-align:center;margin-top:-18px">Chọn từ cùng nghĩa</div>`, opts: x.opts, a: x.a, after: `${esc(x.q)} ≈ <b>${esc(x.opts[x.a])}</b>` }));
       return rs;
     }
@@ -281,6 +281,17 @@ function rounds(L) {
   return [];
 }
 
+// Đáp án nhiễu không được "cũng đúng": loại đáp án trùng một phần với đáp án đúng
+// (vd. "N / V-ing" với "V-ing / N" hay "N"; "busy, unavailable" với "away, unavailable"; "khách hàng" với "hành khách")
+const VI_STOP = new Set('người cái các những một và hoặc có của được đang cho với lên xuống vào ra đi làm trước sau là bị việc sự ai gì nào'.split(' '));
+const comps = a => String(a).toLowerCase().split(/\s*[\/,;]\s*|\s+-\s+/).map(x => x.trim()).filter(Boolean);
+const clash = (a, b, gram) => {
+  if (gram) { const tk = x => new Set(String(x).split(/[\s\/+]+/).filter(t => /^(N|V|V3|V-ing|Adj|Adv|clause)$/.test(t))); const A = tk(a); return [...tk(b)].some(t => A.has(t)); }
+  const A = comps(a), B = comps(b); if (A.some(x => B.includes(x))) return true;
+  if (/[à-ỹđ]/i.test(a + b)) { const w = x => new Set(String(x).toLowerCase().replace(/\(.*?\)/g, ' ').split(/[^a-zà-ỹđ]+/i).filter(t => t.length > 1 && !VI_STOP.has(t))); const WA = w(a); return [...w(b)].some(t => WA.has(t)); }
+  return false;
+};
+const pickDistract = (ans, all, gram) => { const pool = all.filter(a => a !== ans && !clash(ans, a, gram)); return sample(pool.length >= 3 ? pool : all.filter(a => a !== ans && !comps(a).every(c => comps(ans).includes(c))), 3); };
 function run(view, L, mode, only, resume) {
   const sKey = '/lab/' + L.id;
   let rs;

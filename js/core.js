@@ -408,15 +408,21 @@ X.hereKey = () => location.hash.slice(1) || '/today';
 X.go = h => { if (location.hash === h) X.render(); else location.hash = h; };
 let cleanup = null;
 X.onLeave = fn => { cleanup = fn; };
+const HUB = /^\/(today|tests|lab|path(\/\w+)?|unit\/\w+|library(\/\w+)?|vocab|skills|progress|errors)$/, SCROLL = {};
+// nội dung có thể vẽ chậm (ảnh, dữ liệu) → thử cuộn lại vài lần cho tới khi trang đủ dài
+const restoreScroll = (y, h) => { let n = 0; const go = () => { if (X.curHash !== h) return; if (document.documentElement.scrollHeight - innerHeight >= y - 4 || n > 8) { window.scrollTo(0, y); return; } n++; setTimeout(go, 60); }; requestAnimationFrame(go); };
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#side a, .side a')) X.sideNav = true; }, true);
 X.render = () => {
   TTS.stop(); if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
   document.onkeydown = null;
   const h = location.hash.slice(1) || '/about';   // mở web lần nào cũng gặp trang Giới thiệu trước
-  if (h !== X.curHash) { X.prevHash = X.curHash; X.curHash = h; }
+  // nhớ vị trí cuộn của trang danh sách: làm xong một bài rồi quay lại thì về đúng chỗ vừa bấm, không nhảy lên đầu trang
+  if (h !== X.curHash) { if (X.curHash && HUB.test(X.curHash)) SCROLL[X.curHash] = window.scrollY; X.prevHash = X.curHash; X.curHash = h; }
+  const back = HUB.test(h) && SCROLL[h] > 0 && !X.sideNav ? SCROLL[h] : 0; X.sideNav = false;
   const view = $('#view');
   for (const [re, fn] of routes) {
     const m = h.match(re);
-    if (m) { view.innerHTML = ''; window.scrollTo(0, 0); fn(view, ...m.slice(1).map(v => v === undefined ? undefined : decodeURIComponent(v))); X.renderSide(h); X.afterRender && X.afterRender(h, view); X.markScroll && setTimeout(() => X.markScroll(view), 60); return; }
+    if (m) { view.innerHTML = ''; window.scrollTo(0, 0); fn(view, ...m.slice(1).map(v => v === undefined ? undefined : decodeURIComponent(v))); if (back) restoreScroll(back, h); X.renderSide(h); X.afterRender && X.afterRender(h, view); X.markScroll && setTimeout(() => X.markScroll(view), 60); return; }
   }
   X.go('#/today');
 };

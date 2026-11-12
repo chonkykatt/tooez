@@ -310,21 +310,25 @@ const askTap = src => new Promise(res => {
   b.onclick = () => { b.remove(); const p = AEL.play(); if (p && p.then) p.then(() => res(true), () => res(false)); else res(true); };
   document.body.appendChild(b); setTimeout(() => { if (b.isConnected) { b.remove(); res(false); } }, 15000);
 });
-const playSrc = (src, rate) => new Promise(res => {
+const playSrc1 = (src, rate) => new Promise(res => {
   if (!AEL) return res(false);
-  let done = false; const fin = ok => { if (!done) { done = true; AEL.onended = AEL.onerror = null; res(ok); } };
+  let done = false, wd = 0; const fin = ok => { if (!done) { done = true; clearTimeout(wd); AEL.onended = AEL.onerror = AEL.onplaying = AEL.onstalled = null; res(ok); } };
   AEL.onended = () => fin(true);
   AEL.onerror = () => { console.warn('[TOOEZ audio] lỗi tải', src, AEL.error && AEL.error.code); fin(false); };
+  // chưa phát được sau 12 giây (mạng chậm) → coi như lỗi để thử lại; đã phát thì chờ hết độ dài file + 3 giây
+  wd = setTimeout(() => { if (AEL.paused || AEL.currentTime === 0) { try { AEL.pause(); } catch (e) {} fin(false); } }, 12000);
+  AEL.onplaying = () => { clearTimeout(wd); const d = isFinite(AEL.duration) ? AEL.duration : 30; wd = setTimeout(() => fin(true), (d / (rate || 1) + 3) * 1000); };
   AEL.src = src; AEL.playbackRate = rate; AEL.defaultPlaybackRate = rate;
   const p = AEL.play();
   if (p && p.catch) p.catch(e => {
     if (done) return;
-    if (e && e.name === 'NotAllowedError') { askTap(src).then(ok => { if (!ok) fin(false); }); return; }
+    if (e && e.name === 'NotAllowedError') { clearTimeout(wd); askTap(src).then(ok => { if (!ok) fin(false); }); return; }
     if (e && e.name === 'AbortError') return fin('stop');   // bị dừng vì chuyển câu / rời trang
     console.warn('[TOOEZ audio]', e && e.name, src); fin(false);
   });
-  setTimeout(() => fin(true), 30000);
 });
+// lỗi mạng thoáng qua: thử lại 1 lần trước khi chuyển sang giọng trình duyệt
+const playSrc = async (src, rate) => { const tk = TTS.token; let ok = await playSrc1(src, rate); if (ok === false && tk === TTS.token) { await new Promise(r => setTimeout(r, 400)); if (tk === TTS.token) ok = await playSrc1(src + (src.includes('?') ? '&' : '?') + 'r=' + Date.now(), rate); } return ok; };
 // "(A) The man is..." / "A. Yes, ..." → đọc chữ cái và câu bằng hai file riêng, nên một câu dùng được cho mọi thứ tự đáp án
 const splitLetter = t => { const m = TTS.norm(t).match(/^\(?([A-D])[).]\s+(.+)$/); return m ? [m[1] + '.', m[2]] : [TTS.norm(t)]; };
 TTS.files = (role, text) => { const parts = splitLetter(text), srcs = parts.map(p => TTS.fileFor(role, p)); return srcs.every(Boolean) ? srcs : null; };
@@ -340,15 +344,24 @@ TTS.speak = async (text, opt = {}) => {
   return TTS.speakVoice(text, opt);
 };
 TTS.speakVoice = (text, opt = {}) => new Promise(res => {
-  if (TTS.missing()) { if (!('speechSynthesis' in window) || TTS.voicesTried) TTS.warn(); else setTimeout(() => { TTS.voicesTried = true; loadVoices(); if (TTS.missing()) TTS.warn(); }, 1200); return setTimeout(res, 300); }
-  const u = new SpeechSynthesisUtterance(text);
-  const v = opt.voice || TTS.pick(opt.sex || 'W', opt.lang);
-  if (v) { u.voice = v; u.lang = v.lang; } else u.lang = S.profile.accent;
-  u.rate = (opt.rate || 1) * (S.profile.rate || 1);
-  let done = false; const fin = () => { if (!done) { done = true; res(); } };
-  u.onend = u.onerror = fin;
-  setTimeout(fin, 4000 + text.length * 120);   // phòng khi trình duyệt không bao giờ báo đọc xong
-  speechSynthesis.speak(u);
+  if (TTS.missing()) { if (!('speechSynthesis' in window) || TTS.voicesTried) TTS.warn(); else setTimeout(() => { TTS.voicesTried = true; loadVoices(); if (TTS.missing()) TTS.warn(); }, 1200); return setTimeout(res, 600); }
+  const tk = TTS.token, v = opt.voice || TTS.pick(opt.sex || 'W', opt.lang);
+  let done = false, tries = 0, wd = 0; const fin = () => { if (!done) { done = true; clearTimeout(wd); res(); } };
+  const go = () => {
+    if (tk !== TTS.token) return fin();
+    const u = new SpeechSynthesisUtterance(text);
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = S.profile.accent;
+    u.rate = (opt.rate || 1) * (S.profile.rate || 1);
+    let started = false;
+    u.onstart = () => { started = true; clearTimeout(wd); wd = setTimeout(fin, 6000 + text.length * 110 / u.rate); };   // phòng khi trình duyệt không bao giờ báo đọc xong
+    u.onend = fin;
+    u.onerror = e => { if (!started && tries < 2 && e.error !== 'interrupted' && e.error !== 'canceled') { tries++; setTimeout(go, 250); } else fin(); };
+    // Chrome/Edge đôi khi "nuốt" câu nói ngay sau lệnh dừng: chưa bắt đầu sau 3 giây thì đọc lại
+    clearTimeout(wd); wd = setTimeout(() => { if (!started) { if (tries < 2) { tries++; try { speechSynthesis.cancel(); } catch (e) {} setTimeout(go, 200); } else fin(); } }, 3000);
+    try { speechSynthesis.resume(); } catch (e) {}
+    speechSynthesis.speak(u);
+  };
+  setTimeout(go, speechSynthesis.speaking || speechSynthesis.pending ? 120 : 40);
 });
 TTS.stop = () => { TTS.token++; if ('speechSynthesis' in window) speechSynthesis.cancel(); if (AEL && !AEL.paused) { try { AEL.pause(); } catch (e) {} } };
 // lines: [{s:'M'|'W'|'Q'|'A'|'N', t}]

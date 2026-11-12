@@ -9,7 +9,7 @@ X.FLOW = [
   { k: 'do', no: 1, n: 'Đo', page: 'Đề thi từng Part', href: '#/tests', ic: 'test', c: 'fl-sky',
     what: 'Làm một đề Part như thi thật: đúng số câu, bấm giờ, chấm và chữa từng câu.', when: 'Trước khi học một Part, và làm lại sau 2-3 tuần để đo tiến bộ.' },
   { k: 'hoc', no: 2, n: 'Học', page: 'Lộ trình + Kho từ vựng', href: '#/path', ic: 'path', c: 'fl-syn',
-    what: 'Học từng unit: kiến thức → từ vựng → luyện → kiểm tra. Ôn từ vựng đến hạn mỗi ngày.', when: 'Mỗi ngày, theo thứ tự unit. Qua 80% thì unit sau mở.' },
+    what: 'Học từng chủ đề của Part: học thẻ → luyện đúng dạng → kiểm tra. Từ vựng học và ôn riêng mỗi ngày.', when: 'Mỗi ngày, theo thứ tự chủ đề. Đạt 80% thì sang chủ đề sau.' },
   { k: 'luyen', no: 3, n: 'Luyện', page: 'Lab phản xạ', href: '#/lab', ic: 'lab', c: 'fl-sun',
     what: 'Luyện riêng một dạng câu nhiều lượt, đến khi vừa nhanh vừa đúng.', when: 'Sau khi học xong unit, hoặc khi đề và Sổ lỗi chỉ ra dạng còn yếu.' },
   { k: 'chua', no: 4, n: 'Chữa', page: 'Sổ lỗi', href: '#/errors', ic: 'err', c: 'fl-ember',
@@ -110,7 +110,7 @@ X.route(/^\/today$/, view => {
     </div>
     <div class="sec"><div class="sec-h"><h2 class="h2">Độ nét từng Part</h2><a href="#/progress" class="small">Xem chi tiết</a></div>
       <div class="grid g3">${X.PARTS.map(pp => { const st = X.pathStats(pp.k); return `<a class="card link" href="#/path/${pp.k}"><div class="row"><b class="grow" style="font-family:var(--f-display);font-size:17px">${pp.n}</b>${s.profile.focus.includes(pp.k) ? '<span class="pill syn">Trọng tâm</span>' : ''}</div>
-        <div class="small muted">${pp.vi} - ${st.passed}/${st.units} unit - ${st.stars}★${st.acc !== null ? ` - đúng ${st.acc}%` : ''}</div><div class="bar thin" style="margin:10px 0 8px"><i style="width:${pct(st.done, st.total)}%"></i></div>${X.lvlHtml(st.score)}</a>`; }).join('')}</div></div>
+        <div class="small muted">${pp.vi} - ${st.passed}/${st.units} bài - ${st.stars}★${st.acc !== null ? ` - đúng ${st.acc}%` : ''}</div><div class="bar thin" style="margin:10px 0 8px"><i style="width:${pct(st.done, st.total)}%"></i></div>${X.lvlHtml(st.score)}</a>`; }).join('')}</div></div>
   </div>`;
 });
 
@@ -494,7 +494,7 @@ X.route(/^\/progress$/, view => {
     </div>
     <div class="card sec"><div class="h3" style="margin-bottom:12px">Độ nét từng Part</div>
       <table class="dt"><tr><th>Part</th><th>Tiến độ</th><th class="num">Đúng</th><th class="num">TB/câu</th><th>Độ nét</th></tr>
-      ${X.PARTS.map(p => { const st = X.pathStats(p.k); const a = att.filter(x => p.parts.includes(x.p)); return `<tr><td><a href="#/path/${p.k}"><b>${p.n}</b></a> <span class="small muted">${p.vi}</span></td><td style="width:28%"><div class="bar thin"><i style="width:${pct(st.done, st.total)}%"></i></div><span class="small faint">${st.passed}/${st.units} unit - ${st.stars}★</span></td><td class="num">${a.length ? pct(a.filter(x => x.ok).length, a.length) + '%' : '—'}</td><td class="num">${a.length ? fmtMs(a.reduce((m, x) => m + x.ms, 0) / a.length) : '—'}</td><td>${X.lvlHtml(st.score)}</td></tr>`; }).join('')}</table></div>
+      ${X.PARTS.map(p => { const st = X.pathStats(p.k); const a = att.filter(x => p.parts.includes(x.p)); return `<tr><td><a href="#/path/${p.k}"><b>${p.n}</b></a> <span class="small muted">${p.vi}</span></td><td style="width:28%"><div class="bar thin"><i style="width:${pct(st.done, st.total)}%"></i></div><span class="small faint">${st.passed}/${st.units} bài - ${st.stars}★</span></td><td class="num">${a.length ? pct(a.filter(x => x.ok).length, a.length) + '%' : '—'}</td><td class="num">${a.length ? fmtMs(a.reduce((m, x) => m + x.ms, 0) / a.length) : '—'}</td><td>${X.lvlHtml(st.score)}</td></tr>`; }).join('')}</table></div>
     <div class="grid g2 sec">
       <div class="card"><div class="h3" style="margin-bottom:10px">Dạng câu cần ưu tiên</div>${skills.length ? `<table class="dt"><tr><th>Dạng</th><th class="num">Đúng</th><th class="num">TB</th></tr>${skills.slice(0, 10).map(x => `<tr><td><span class="pill">P${x.p}</span> ${esc(x.s)}</td><td class="num"><span class="pill ${x.ok / x.n >= .85 ? 'sage' : x.ok / x.n >= .5 ? 'gold' : 'red'}">${pct(x.ok, x.n)}%</span></td><td class="num">${fmtMs(x.ms / x.n)}</td></tr>`).join('')}</table>
         <p class="small muted" style="margin-top:10px">&lt;50%: học lại nền tảng - 50-69%: luyện dạng cụ thể - 70-84%: luyện trộn - 85%+: kiểm tra trí nhớ sau vài ngày.</p>` : '<div class="empty">Làm thêm bài để có dữ liệu theo dạng câu.</div>'}</div>

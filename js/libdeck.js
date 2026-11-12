@@ -33,6 +33,9 @@ const deckRoute = (view, pk, id) => {
   const part = X.PARTS.find(p => p.k === pk) || { n: 'Part' };
   let i = 0, ok = 0, checks = 0;
   let answered = {};
+  // mở từ Thư viện thì quay về Thư viện; mở từ Lộ trình / Hôm nay thì quay về unit
+  const ph = X.prevHash || ''; if (/^\/(library)/.test(ph)) X.deckBack = null; else if (!/^\/(deck|p1lib)\//.test(ph)) X.deckBack = (X.deckDone && X.deckDone(pk, id) || {}).back || null;
+  const fromLib = !X.deckBack, backHref = X.deckBack || '#/library/' + pk;
   const sKey = X.hereKey(), sv = X.sessGet(sKey);
   if (sv && sv.kind === 'deck') { i = Math.min(sv.i, T.cards.length - 1); ok = sv.ok || 0; checks = sv.checks || 0; answered = sv.answered || {}; setTimeout(() => X.toast(`Làm tiếp từ thẻ ${i + 1}/${T.cards.length}`), 50); }
   const persist = () => X.sessSet(sKey, { kind: 'deck', title: T.t, n: T.cards.length, i, ok, checks, answered });
@@ -77,7 +80,7 @@ const deckRoute = (view, pk, id) => {
     X.TTS.stop(); persist();
     const C = T.cards[i], last = i === T.cards.length - 1, need = C.t === 'check' && answered[i] === undefined;
     view.innerHTML = `<div class="page"><div class="deck">
-      <div class="qz-top"><a class="icon-btn" href="#/library/${pk}">${icon('x')}</a><div><div class="kicker">${esc(part.n)} - Thư viện</div><div class="h3">${T.icon} ${esc(T.t)}</div></div>
+      <div class="qz-top"><a class="icon-btn" href="${backHref}">${icon('x')}</a><div><div class="kicker">${esc(part.n)} - ${fromLib ? 'Thư viện' : 'Lộ trình'}</div><div class="h3">${T.icon} ${esc(T.t)}</div></div>
         <div class="dots">${T.cards.map((_, k) => `<i class="${k < i ? 'on' : k === i ? 'cur' : ''}"></i>`).join('')}</div></div>
       <div class="q-card deck-card">${card(C)}</div>
       <div class="row" style="margin-top:14px"><button class="btn" id="dk-prev" ${i ? '' : 'disabled'}>${icon('back')} Trước</button><span class="grow"></span>
@@ -118,7 +121,8 @@ const deckRoute = (view, pk, id) => {
     S().lessons[doneKey(pk, id)] = Date.now(); X.save();
     if (first) X.addXP(5, 'Học xong chủ đề');
     const idx = d.topics.indexOf(T), nx = d.topics[idx + 1];
-    X.celebrate ? X.celebrate({ title: 'Xong chủ đề!', sub: `${T.t}${checks ? ` - đúng ${ok}/${checks} câu thử` : ''}`, stars: checks ? (ok === checks ? 3 : ok ? 2 : 1) : 3, xp: first ? 5 : 0, btn: nx ? `Tiếp: ${nx.t}` : 'Về Thư viện', href: nx ? deckHref(pk, nx.id) : '#/library/' + pk }) : X.go('#/library/' + pk);
+    const pd = !fromLib && X.deckDone && X.deckDone(pk, id);   // mở từ Lộ trình: học xong thì luyện ngay đúng dạng này
+    X.celebrate ? X.celebrate({ title: 'Xong chủ đề!', sub: `${T.t}${checks ? ` - đúng ${ok}/${checks} câu thử` : ''}`, stars: checks ? (ok === checks ? 3 : ok ? 2 : 1) : 3, xp: first ? 5 : 0, btn: pd ? pd.label : nx ? `Tiếp: ${nx.t}` : 'Về Thư viện', href: pd ? pd.href : nx ? deckHref(pk, nx.id) : '#/library/' + pk }) : X.go(pd ? pd.href : '#/library/' + pk);
   };
   draw();
 };

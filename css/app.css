@@ -1289,3 +1289,8 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 @media (max-width:980px){.lv{top:auto;bottom:auto;top:calc(var(--lvtop,64px) + 8px);right:10px}}
 @media print{.lv{display:none}}
 .tap-audio{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:300;border:2px solid var(--ink);background:var(--sun);color:var(--ink);font:800 16px var(--f-display);padding:12px 22px;border-radius:999px;box-shadow:0 4px 0 var(--ink);cursor:pointer;animation:lvIn .35s ease-out}
+/* Lộ trình: Part (học chính) ở trên, bổ trợ ở dưới */
+.layers{grid-template-columns:1fr 1fr}
+.layers .lycol.wide{grid-column:1/-1}
+@media (max-width:760px){.layers{grid-template-columns:1fr}}
+.layers .lycol:last-child:not(.wide){grid-column:auto}

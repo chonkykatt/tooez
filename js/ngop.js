@@ -17,7 +17,7 @@ const LADDER = {
     { k: 'p7-2', n: 'Săn chi tiết: tên, số, ngày', d: 'Đọc câu hỏi, gạch 1 từ khóa (tên, số, ngày, địa điểm), rồi quét tìm đúng từ đó. Không đọc cả bài. Mục tiêu: dưới 45 giây một câu.', href: '#/lab/p7-locate', btn: 'Định vị bằng chứng' },
     { k: 'p7-3', n: 'Nhận ra đáp án đã đổi từ', d: 'Đáp án đúng hiếm khi chép nguyên câu trong bài. Luyện nhận ra “sister” = “a family member”, “aim” = “goal”. Đây là kỹ năng ăn điểm nhiều nhất.', href: '#/lab/para-pairs', btn: 'Paraphrase Sprint' },
     { k: 'p7-4', n: 'Câu NOT / TRUE và bẫy thông tin cũ', d: 'Với câu NOT: biến 4 phương án thành 4 câu đúng/sai nhỏ, đánh dấu ✓ từng cái. Luyện thêm bẫy “thông tin đã đổi”.', href: '#/lab/p7-trap', btn: 'Bẫy thông tin cũ' },
-    { k: 'p7-5', n: 'Một bộ 5 câu, đi theo thứ tự thông minh', d: 'Làm 1 bộ đoạn ba có hướng dẫn: phân loại câu trước, làm câu nhanh trước, xem bằng chứng sau từng câu. Mục tiêu: 1 bộ trong 6-7 phút.', href: '#/ngop/bo/foxglove', btn: 'Làm bộ mẫu' },
+    { k: 'p7-5', n: 'Bộ đoạn ba: làm cùng rồi tự làm', d: 'Làm cùng Tooez 15 câu đoạn ba: bộ đầu được dẫn từng bước, bộ sau tự làm có gợi ý, bộ cuối tự làm hẳn. Mục tiêu cuối: 1 bộ trong 6-7 phút.', href: '#/ngop/hoc', btn: 'Làm cùng Tooez' },
     { k: 'p7-6', n: 'Đề Part 7 đầy đủ, bấm giờ', d: 'Khi bậc 5 đã thấy nhẹ: làm cả đề, giữ nhịp khoảng 1 phút mỗi câu, áp dụng luật 90 giây. Chữa từng câu sai trong Sổ lỗi.', href: '#/exam/x7-1', btn: 'Đề Part 7' },
   ],
   p34: [
@@ -47,6 +47,7 @@ X.route(/^\/ngop$/, view => {
     <div class="kicker">Dành cho bạn đang thấy Part 3, 4, 7 quá sức</div>
     <h1 class="h1">Bạn bị ngộp Part 3, 4 và 7?</h1>
     <p class="lead">Nhìn 3 bài dài với 5 câu hỏi mà muốn buông bút là chuyện rất bình thường. Đó là phản ứng của não khi nhận quá nhiều thứ cùng lúc, không phải dấu hiệu bạn kém. Trang này chỉ cách chia nhỏ đề ra để làm từng miếng một, câu nào ăn nhanh, câu nào phải nhai, và luyện từng bậc cho tới khi không còn sợ.</p>
+    <div class="ng-cta"><a class="btn pri lg" href="#/ngop/hoc">${X.S().ngop && X.S().ngop.hoc && Object.keys(X.S().ngop.hoc.done || {}).length ? 'Làm tiếp cùng Tooez' : 'Làm cùng Tooez từng bước'} ${icon('arrow')}</a><a class="btn lg" href="#ng-vi-sao" data-j>Đọc hướng dẫn trước</a></div>
   </div><div class="ng-cat">${X.xi('happy', 130)}</div></div>
 
   <div class="sec"><div class="h3" style="margin-bottom:10px">Bạn đang ngộp ở chỗ nào?</div>
@@ -176,8 +177,10 @@ X.route(/^\/ngop$/, view => {
     <p class="small muted" style="max-width:760px">Mỗi ngày 15-20 phút, mỗi lần chỉ luyện một kỹ năng nhỏ. <b>Lên bậc</b> khi hai lần liên tiếp đúng khoảng 80%. Hôm nào mệt hay thấy khó thì <b>xuống lại 1 bậc</b>. Đó không phải thụt lùi mà là ôn cho chắc. Bấm vào số của từng bậc để đánh dấu đã qua.</p>
     <div class="grid g2">${ladderHtml('p7', 'Part 7')}${ladderHtml('p34', 'Part 3-4')}</div></div>
 
-  <div class="sec" id="ng-thu"><div class="kicker">8. Thử ngay</div><h2 class="h2">Làm một bộ đoạn ba có người dẫn đường</h2>
-    <p class="small muted" style="max-width:760px">Bước 1: phân loại 5 câu trong 30 giây. Bước 2: làm theo thứ tự câu nhanh trước. Sau mỗi câu, TOOEZ tô vàng đúng chỗ chứa đáp án trong bài và chỉ ra bẫy.</p>
+  <div class="sec" id="ng-thu"><div class="kicker">8. Thử ngay</div><h2 class="h2">Làm cùng Tooez, rồi tự làm dần</h2>
+    <a class="card link ng-hoc-card" href="#/ngop/hoc"><div class="row" style="gap:16px;align-items:center">${X.xi('happy', 72)}<div class="grow"><b class="h3">Làm cùng Tooez: 15 câu đoạn ba</b>
+      <div class="small">Bộ 1: Tooez dẫn từng bước nhỏ, bạn chỉ cần bấm theo. Bộ 2: bạn tự làm, kẹt thì bấm Gợi ý. Bộ 3: bạn tự làm hẳn. Sai liền 2 câu thì Tooez tự quay lại làm cùng.</div></div><span class="btn pri">${icon('arrow')}</span></div></a>
+    <p class="small muted" style="max-width:760px;margin-top:16px">Đã quen rồi thì <b>tự luyện từng bộ</b>: phân loại 5 câu, làm theo thứ tự câu nhanh trước, xem bằng chứng sau mỗi câu.</p>
     <div class="grid g3">${SETS.map(st => { const r = sets[st.id]; return `<a class="card link ng-set" href="#/ngop/bo/${st.id}">
       <div class="kicker">Câu ${st.first}-${st.first + 4}</div><div class="h3">${esc(st.title)}</div><div class="small muted">${esc(st.kind)}</div>
       <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap">${st.qs.map(q => tierPill(q.tier)).join('')}</div>

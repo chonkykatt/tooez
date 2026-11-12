@@ -1372,8 +1372,40 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .ng-tabs{flex-wrap:wrap;margin-bottom:10px}
 .ng-doc{font-size:14.5px;line-height:1.65;max-height:72vh;overflow:auto;padding-right:4px}
 .ng-doc h4{margin:4px 0 10px}
-.ng-doc mark{background:none;color:inherit;transition:background .3s}
+.ng-doc mark{background:none;color:inherit;padding:0;transition:background .3s}
 .ng-doc mark.on{background:#FFE58A;border-radius:4px;box-shadow:0 0 0 2px #FFE58A}
-@media (max-width:960px){.ng-work{grid-template-columns:1fr}.ng-qcol{position:static}.ng-doc{max-height:none}}
+@media (max-width:960px){.ng-work{grid-template-columns:minmax(0,1fr)}.ng-qcol{position:static}.ng-doc{max-height:none}}
 @media (max-width:720px){.ng-hero{flex-direction:column-reverse;align-items:flex-start}.ng-guess .g4{grid-template-columns:1fr 1fr}}
 @media (max-width:460px){.ng-guess .g4{grid-template-columns:1fr}}
+/* Làm cùng Tooez */
+.ng-prog{margin:12px 0 14px;max-width:520px}
+.ng-prog-bar{height:8px;border-radius:6px;background:var(--paper-dim);overflow:hidden;margin-bottom:6px}
+.ng-prog-bar i{display:block;height:100%;background:var(--sage);border-radius:6px;transition:width .4s}
+.ng-intro .xi-say .bubble{font-weight:500}
+.ng-coach{margin-top:14px}
+.ng-coach .xi-say{gap:8px}
+.ng-coach .bubble{font-weight:500;font-size:14.5px;line-height:1.5;padding:10px 14px;margin-bottom:12px;box-shadow:0 3px 0 var(--ink)}
+.ng-stepno{margin-top:2px}
+.ng-picks{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.ng-picks.col{flex-direction:column;align-items:stretch}
+.ng-picks .btn{justify-content:flex-start;text-align:left}
+.ng-picks .btn.ok{border-color:var(--sage);background:var(--sage-soft)}
+.ng-picks .btn.no{border-color:var(--red);background:var(--red-soft);opacity:.7}
+.ng-ex-doc{border:1px dashed var(--line-strong);border-radius:12px;padding:10px 12px;background:var(--card);font-size:14.5px;line-height:1.7}
+.ng-ex-doc p,.ng-ex-doc ul{margin:0 0 6px}
+.ng-ex-doc ul{padding-left:18px}
+.ng-ex-doc .ktw{margin:4px 0}
+.ng-tk{cursor:pointer;border-radius:4px;padding:1px 1px;transition:background .15s}
+.ng-tk:hover{background:var(--syn-soft)}
+.ng-tk-row{cursor:pointer}
+.ng-tk-row:hover td{background:var(--syn-soft)}
+.ng-tk.hit,.ng-tk-row.hit td{background:#FFE58A}
+.ng-tk.miss,.ng-tk-row.miss td{background:var(--red-soft)}
+.ng-tk.glow,.ng-tk-row.glow td{animation:ngGlow 1s ease-in-out infinite}
+@keyframes ngGlow{0%,100%{background:transparent}50%{background:#FFE58A}}
+.solved .ng-tk:not(.hit):hover{background:none}
+.opt.out{opacity:.45;text-decoration:line-through;background:var(--paper-dim)}
+.ng-fast{background:var(--syn-soft);color:var(--syn-deep);border-radius:10px;padding:8px 10px}
+.ng-fast svg{width:14px;height:14px;vertical-align:-2px}
+.ng-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+@media (prefers-reduced-motion:reduce){.ng-tk.glow,.ng-tk-row.glow td{animation:none;background:#FFE58A}}

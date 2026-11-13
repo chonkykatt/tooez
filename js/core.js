@@ -353,7 +353,7 @@ TTS.key = (role, text) => fnv(role + '|' + TTS.norm(text));
 let HAVE = null;
 const have = () => HAVE || (HAVE = new Set(String(window.AUDIO_HAVE || '').split(/\s+/).filter(Boolean)));
 TTS.hasFiles = () => have().size > 0;
-TTS.fileFor = (role, text) => { const k = TTS.key(role, text); return have().has(k) ? 'audio/' + k + '.mp3' : null; };
+TTS.fileFor = (role, text) => { const k = TTS.key(role, text); return have().has(k) ? 'audio/' + k + '.mp3' : (window.TOOEZ_AUD && window.TOOEZ_AUD[k]) || null; };   // TOOEZ_AUD: audio tạo trên trang Soạn đề, lưu ở Supabase
 // một thẻ audio dùng chung: iPhone chỉ cho phát tiếp nếu thẻ đã được "mở khóa" bằng một lần chạm
 const AEL = typeof Audio !== 'undefined' ? new Audio() : null;
 // 0,1 giây im lặng: phát một lần trong cú chạm đầu tiên để trình duyệt (Opera, Safari...) cho phép phát tiếp về sau

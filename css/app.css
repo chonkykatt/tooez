@@ -1498,3 +1498,4 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .sd-pic i.pill{position:absolute;top:12px;right:12px;font-style:normal}
 .acct-side.soan-link{display:flex;align-items:center;gap:8px;border-color:var(--gold);background:var(--gold-soft);color:var(--ink);text-decoration:none;margin-bottom:0}
 .sd-sub{border-left:3px solid var(--syn-soft);padding-left:12px;margin:6px 0;display:grid;gap:4px}
+.sd-aud{margin:0 0 12px;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}

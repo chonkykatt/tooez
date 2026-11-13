@@ -6,8 +6,8 @@ const S = () => X.S();
 
 /* ---------------- 4 bước học: dùng chung cho Giới thiệu, Hôm nay và đầu mỗi trang ---------------- */
 X.FLOW = [
-  { k: 'do', no: 1, n: 'Đo', page: 'Đề thi từng Part', href: '#/tests', ic: 'test', c: 'fl-sky',
-    what: 'Làm một đề Part như thi thật: đúng số câu, bấm giờ, chấm và chữa từng câu.', when: 'Trước khi học một Part, và làm lại sau 2-3 tuần để đo tiến bộ.' },
+  { k: 'do', no: 1, n: 'Đo', page: 'Đề thi (cả bài hoặc từng Part)', href: '#/tests', ic: 'test', c: 'fl-sky',
+    what: 'Làm bài thi đầu vào 200 câu (hoặc từng Part) như thi thật, chấm và chữa từng câu.', when: 'Ngay khi bắt đầu, và làm lại sau 3-4 tuần để đo tiến bộ.' },
   { k: 'hoc', no: 2, n: 'Học', page: 'Lộ trình + Kho từ vựng', href: '#/path', ic: 'path', c: 'fl-syn',
     what: 'Học từng chủ đề của Part: học thẻ → luyện đúng dạng → kiểm tra. Từ vựng học và ôn riêng mỗi ngày.', when: 'Mỗi ngày, theo thứ tự chủ đề. Đạt 80% thì sang chủ đề sau.' },
   { k: 'luyen', no: 3, n: 'Luyện', page: 'Lab phản xạ', href: '#/lab', ic: 'lab', c: 'fl-sun',
@@ -26,7 +26,7 @@ X.progTabs = cur => `<div class="part-tabs ptabs2"><a class="part-tab ${cur === 
 // thứ tự = thứ tự học: Đo → Học → Luyện → Chữa, rồi tới phần xem lại và tra cứu
 const NAV = [
   ['/about', 'heart', 'Giới thiệu & ủng hộ'], ['/today', 'today', 'Hôm nay', 'Bắt đầu'], ['/ngop', 'leaf', 'Bị ngộp Part 3, 4, 7?'],
-  ['/tests', 'test', 'Đề thi từng Part', '1 - Đo'],
+  ['/tests', 'test', 'Đề thi', '1 - Đo'],
   ['/path', 'path', 'Lộ trình', '2 - Học'], ['/vocab', 'words', 'Kho từ vựng'],
   ['/lab', 'lab', 'Lab phản xạ', '3 - Luyện'],
   ['/errors', 'err', 'Sổ lỗi', '4 - Chữa'],
@@ -93,7 +93,7 @@ X.route(/^\/today$/, view => {
   const exSug = X.examSuggest && X.examSuggest();
   const MI = { exam: ['fl-sky', 'test'], path: ['c-syn', 'path'], words: ['c-sun', 'words'], errors: ['c-ember', 'err'], lab: ['c-sky', 'lab'] };
   const missions = [
-    ...(exSug ? [{ k: 'exam', t: `Đo: ${X.examTitle(exSug.e.id)}`, d: exSug.why, href: `#/exam/${exSug.e.id}`, btn: 'Làm đề' }] : []),
+    ...(exSug ? [exSug.full ? { k: 'exam', t: `Đo: ${exSug.title}`, d: exSug.why, href: '#/fulltest', btn: 'Làm bài' } : { k: 'exam', t: `Đo: ${X.examTitle(exSug.e.id)}`, d: exSug.why, href: `#/exam/${exSug.e.id}`, btn: 'Làm đề' }] : []),
     { k: 'path', t: next ? `Lộ trình: ${next.next.title}` : 'Lộ trình: chọn Part để học', d: next ? `${X.trackName(next.k)} - ${{ learn: 'Học', vocab: 'Từ vựng', drill: 'Luyện', check: 'Kiểm tra unit' }[next.next.type] || ''}` : 'Đặt Part trọng tâm trong Hồ sơ', href: next ? stationHref(next.next) : '#/path', btn: 'Học' },
     { k: 'words', t: due ? `Ôn ${due} từ đến hạn` : newLeft ? `Học ${newLeft} từ mới` : 'Từ vựng: xong phần hôm nay', d: 'Ôn đúng lúc sắp quên, nhớ lâu hơn đọc lại', href: due ? '#/vocab/review' : '#/vocab/learn', btn: due ? 'Ôn' : 'Học' },
     ...(s.errors.length ? [{ k: 'errors', t: ec.todo ? `Chữa ${ec.todo} lỗi trong Sổ lỗi` : 'Sổ lỗi: không còn lỗi chờ chữa', d: ec.open ? `${ec.open} lỗi chưa ghi nguyên nhân - ${ec.due} câu đến hạn làm lại` : 'Làm sai câu nào, câu đó tự vào đây', href: '#/errors', btn: 'Chữa' }] : []),

@@ -29,21 +29,17 @@ X.examTitle = id => { const e = exById(id); return e ? `Part ${e.part} - ${e.n}`
 X.route(/^\/tests$/, view => {
   const parts = [1, 2, 3, 4, 5, 6, 7];
   const done = X.EXAMS.filter(e => history(e.id).length).length;
-  view.innerHTML = `<div class="page">${X.stepHead('do')}<div class="kicker">Đề thi từng Part</div><h1 class="h1">Làm như thi thật, rồi chữa đến nơi đến chốn</h1>
-    <p class="lead">Mỗi đề đúng số câu, đúng thứ tự và đúng nhịp của đề thật. Phần nghe chạy một lượt, không nghe lại. Phần đọc đếm ngược theo thời gian nên dành cho Part đó. Làm xong là có điểm, phân tích dạng sai và hướng dẫn chữa từng câu.</p>
-    <div class="card tint sec ex-how"><div class="h3">Nên làm đề khi nào?</div>
-      <div class="grid g3" style="margin-top:10px">
-        <div><b>1. Trước khi học một Part</b><div class="small muted">Làm Đề 1 để biết điểm xuất phát và dạng câu hay sai. Sai nhiều cũng không sao, đây là dữ liệu để học đúng chỗ.</div></div>
-        <div><b>2. Chữa ngay sau khi làm</b><div class="small muted">Dùng phần "Chữa từng câu": nghe lại hoặc đọc lại, tìm bằng chứng, gọi tên nguyên nhân. Câu sai tự vào Sổ lỗi.</div></div>
-        <div><b>3. Làm Đề 2 sau 2-3 tuần học</b><div class="small muted">So điểm với Đề 1 để biết Lộ trình và Lab có đang hiệu quả không.</div></div></div>
-      <div class="small faint" style="margin-top:10px">${done ? `Bạn đã làm ${done}/${X.EXAMS.length} đề.` : 'Chưa làm đề nào. Gợi ý: bắt đầu bằng Part 2 Đề 1 (khoảng 10 phút).'} Kết quả đề được dùng cho Bản đồ kỹ năng, Sổ lỗi và gợi ý ở trang Hôm nay.</div></div>
+  const fh = S().tests.full || [], fr = S().fullRun, frOpen = fr && fr.i > 0 && fr.i < 7 && !fr.saved;
+  view.innerHTML = `<div class="page">${X.stepHead('do')}<div class="kicker">Đề thi</div><h1 class="h1">Đo trình độ như thi thật, rồi chữa đến nơi đến chốn</h1>
+    <p class="lead">Mỗi đề đúng số câu, đúng thứ tự và đúng nhịp của đề thật. Phần nghe chạy một lượt, không nghe lại. Phần đọc đếm ngược theo giờ. Làm xong có điểm, phân tích dạng sai và hướng dẫn chữa từng câu.</p>
+    <a class="card link sec row ft-hero" href="#/fulltest" style="gap:16px">${X.xi('wow', 64, 'static')}<div class="grow"><div class="kicker syn">${fh.length ? 'Thi lại cả bài' : 'Nên làm trước tiên'}</div><div class="h2" style="margin:2px 0 4px">Bài thi đầu vào 200 câu</div><div class="small muted">Đủ 7 Part, khoảng 2 tiếng. Xong bài có điểm từng Part, ước tính điểm TOEIC và gợi ý nên học Part nào trước. Mỗi Part tự lấy đề bạn chưa làm.${frOpen ? ' <b>Bạn đang làm dở.</b>' : fh.length ? ` Lần gần nhất ~${fh[fh.length - 1].est} điểm.` : ''}</div></div><span class="btn pri">${frOpen ? 'Làm tiếp' : 'Vào thi'} ${icon('arrow')}</span></a>
     ${X.scoreCard()}
-    <a class="card link sec row" href="#/fulltest" style="gap:16px">${X.xi('wow', 56, 'static')}<div class="grow"><div class="kicker syn">Thi thử đủ bài</div><div class="h3">Bài thi 200 câu, 2 tiếng, như phòng thi</div><div class="small muted">Ghép Đề 1 của 7 Part, Nghe liền một mạch, Đọc chung 75 phút. Có ước tính điểm TOEIC.${S().fullRun && S().fullRun.i > 0 && S().fullRun.i < 7 ? ' <b>Bạn đang làm dở.</b>' : ''}</div></div><span class="btn pri">Vào thi ${icon('arrow')}</span></a>
+    <div class="sec-h sec" style="margin-bottom:0"><div><div class="kicker">Hoặc</div><h2 class="h2">Đo riêng từng Part</h2></div><span class="small muted">${done ? `Đã làm ${done}/${X.EXAMS.length} đề.` : 'Mỗi Part có 2 đề. Làm Đề 1 trước khi học, Đề 2 sau 2-3 tuần để xem tiến bộ.'}</span></div>
     ${parts.map(p => { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) return ''; const pp = X.partOf(p);
       return `<div class="sec"><div class="sec-h"><div><div class="kicker">${LISTEN(p) ? 'Nghe' : 'Đọc'}</div><h2 class="h2">Part ${p} - ${esc({ 3: 'Hội thoại', 4: 'Bài nói' }[p] || pp.vi || '')}</h2></div><span class="small muted ex-real">${esc(G(p).real)}</span></div>
         <div class="grid g2">${es.map(e => { const its = X.examItems(e), h = history(e.id), last = h[h.length - 1], best = h.length ? Math.max(...h.map(x => x.score)) : null, ses = X.sessGet('/exam/' + e.id);
           return `<a class="card link ex-card" href="#/exam/${e.id}"><div class="row"><b class="ex-n">${esc(e.n)}</b><span class="pill">${its.length} câu - ${e.start}-${e.start + its.length - 1}</span><span class="pill">${LISTEN(p) ? 'audio ~' + estMin(e, its) + ' phút' : e.time + ' phút'}</span></div>
-            <div class="row small" style="margin-top:8px">${last ? `<span class="pill ${last.score >= 80 ? 'sage' : last.score >= 60 ? 'gold' : 'red'}">Lần gần nhất ${last.score}%</span><span class="faint">${h.length} lần - tốt nhất ${best}% - ${fmtDate(last.at)}</span>` : ses ? '<span class="pill gold">Đang làm dở</span>' : '<span class="faint">Chưa làm</span>'}<span class="grow"></span><span class="btn sm ${last ? '' : 'pri'}">${last ? 'Làm lại' : ses ? 'Làm tiếp' : 'Làm đề'}</span></div></a>`; }).join('')}</div></div>`; }).join('')}
+            <div class="row small" style="margin-top:8px">${last ? `<span class="pill ${last.score >= 80 ? 'sage' : last.score >= 60 ? 'gold' : 'red'}">Lần gần nhất ${last.score}%</span><span class="faint">${h.length} lần - tốt nhất ${best}% - ${fmtDate(last.at)}${last.full ? ' - trong bài 200 câu' : ''}</span>` : ses ? '<span class="pill gold">Đang làm dở</span>' : '<span class="faint">Chưa làm</span>'}<span class="grow"></span><span class="btn sm ${last ? '' : 'pri'}">${last ? 'Làm lại' : ses ? 'Làm tiếp' : 'Làm đề'}</span></div></a>`; }).join('')}</div></div>`; }).join('')}
     <div class="card sec"><div class="h3">Làm đề giấy hoặc đề ở ngoài?</div><p class="small muted" style="margin:6px 0 10px">Chữa theo đúng các bước trong phần "Cách tự chữa" của mỗi Part (mở một đề bất kỳ để xem). Câu sai thì ghi vào Sổ lỗi bằng tay: số câu, dạng, mình chọn gì, vì sao sai, quy tắc rút ra. Hệ thống sẽ nhắc làm lại đúng lúc.</p><a class="btn sm" href="#/errors/add">${icon('err')} Ghi lỗi từ đề ngoài</a></div>
   </div>`;
 });
@@ -53,7 +49,7 @@ const estMin = (e, its) => Math.max(1, Math.round(its.length * (e.part === 1 ? 3
 X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
   const e = exById(id); if (!e) return X.go('#/tests');
   const items = X.examItems(e), g = G(e.part), sv = X.sessGet('/exam/' + id), h = history(id);
-  view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi từng Part</a>
+  view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi</a>
     <div class="kicker" style="margin-top:14px">Part ${e.part} - ${LISTEN(e.part) ? 'Nghe' : 'Đọc'}</div><h1 class="h1">${esc(X.examTitle(id))}</h1>
     <div class="grid g2 sec">
       <div class="card"><div class="row"><span class="pill">${items.length} câu (${e.start}-${e.start + items.length - 1})</span><span class="pill">${LISTEN(e.part) ? 'Audio khoảng ' + estMin(e, items) + ' phút' : 'Đếm ngược ' + e.time + ' phút'}</span>${h.length ? `<span class="pill">Đã làm ${h.length} lần</span>` : ''}</div>
@@ -62,6 +58,7 @@ X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
           <li>Mỗi câu có thể đánh dấu <b>Phân vân</b> hoặc <b>Lụi</b>. Câu lụi trúng vẫn được tính là cần ôn lại.</li></ul></div>
       <div class="card"><div class="h3" style="margin-bottom:6px">Mẹo làm Part ${e.part}</div><ul class="small ex-ul">${g.rules.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
         ${LISTEN(e.part) && TTS.missing() ? `<div class="card tint small" style="margin-top:12px;padding:12px">${icon('vol')} Trình duyệt này chưa có giọng đọc tiếng Anh nên không phát được audio. Mở bằng Microsoft Edge, Chrome hoặc Safari để làm như thi thật. Nếu vẫn làm ở đây, chữ sẽ hiện thay cho audio.</div>` : ''}</div></div>
+    ${h.length && !sv ? (() => { const other = X.EXAMS.find(x => x.part === e.part && x.id !== e.id && !history(x.id).length); return `<div class="card tint sec small">Bạn đã làm đề này${h[h.length - 1].full ? ' trong bài thi 200 câu' : ''} (${h[h.length - 1].score}%). Làm lại sẽ gặp câu cũ nên điểm thường cao hơn thực lực.${other ? ` <a href="#/exam/${other.id}"><b>Làm ${esc(other.n)} (chưa làm) thay thế</b></a>` : ''}</div>`; })() : ''}
     <div class="row sec">${sv ? `<button class="btn pri lg" id="ex-cont">Làm tiếp từ câu ${e.start + (sv.k || 0)} ${icon('arrow')}</button><button class="btn lg" id="ex-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ex-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
   $('#ex-go', view).onclick = () => { X.sessDel('/exam/' + id); runExam(view, e, items); };
   const c = $('#ex-cont', view); if (c) c.onclick = () => runExam(view, e, items, sv);
@@ -177,7 +174,7 @@ function runExam(view, e, items, sv, chain) {
       if (st.ans[k] !== null && !ok) X.addError(it, st.ans[k], st.conf[k], ctx); if (ok && st.conf[k] === 'guess') X.addError(it, st.ans[k], 'guess', ctx); });
     const rows = items.map((it, k) => ({ item: { ...it, num: N(k) }, chosen: st.ans[k], ok: st.ans[k] === it.answer, ms: st.ms[k], conf: st.conf[k] }));
     const res = { total: items.length, correct: rows.filter(r => r.ok).length, ms: Date.now() - st.t0, rows, at: Date.now() };
-    (S().tests[e.id] ||= []).push({ at: res.at, score: pct(res.correct, res.total), n: res.total, ms: res.ms, mode: 'exam', ans: st.ans, conf: st.conf });
+    (S().tests[e.id] ||= []).push({ at: res.at, score: pct(res.correct, res.total), n: res.total, ms: res.ms, mode: 'exam', ans: st.ans, conf: st.conf, ...(chain ? { full: 1 } : {}) });
     X.addXP(res.correct + 15, 'Hoàn thành đề'); X.save();
     if (chain) return chain.onDone(res, st.left);
     showRes(view, e, items, res);
@@ -270,10 +267,15 @@ function review(view, e, items, res, onBack) {
 /* số liệu đề cho trang Hôm nay: Part trọng tâm nào chưa có đề, hoặc đề gần nhất đã quá 21 ngày */
 X.examSuggest = () => {
   const s = S(), focus = (s.profile.focus || []).map(k => X.PARTS.find(p => p.k === k)).filter(Boolean).flatMap(p => p.parts);
+  const fr = s.fullRun, fh = s.tests.full || [];
+  if (fr && fr.i > 0 && fr.i < 7 && !fr.saved) return { full: true, title: 'Làm tiếp bài thi 200 câu', why: `Đang dở ở Part ${(FULL(fr)[fr.i] || {}).part || ''}` };
+  const anyExam = X.EXAMS.some(e => history(e.id).length);
+  if (!fh.length && !anyExam) return { full: true, first: true, title: 'Bài thi đầu vào 200 câu', why: 'Làm 1 lần đủ 7 Part để biết mình yếu ở đâu, rồi chọn Part học trước' };
+  if (fh.length && Date.now() - fh[fh.length - 1].at > 28 * 864e5) return { full: true, title: 'Thi lại 200 câu', why: `Lần trước ~${fh[fh.length - 1].est} điểm, đã hơn 4 tuần. Đo lại xem tiến bộ` };
   const parts = [...new Set(focus.length ? focus : [2, 5])];
   for (const p of parts) { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) continue;
     const runs = es.flatMap(e => history(e.id).map(h => ({ e, ...h }))).sort((a, b) => b.at - a.at);
-    if (!runs.length) return { e: es[0], why: `Chưa có điểm Part ${p}. Làm để biết điểm xuất phát`, first: true };
+    if (!runs.length) return { e: es.find(x => !history(x.id).length) || es[0], why: `Chưa có điểm Part ${p}. Làm để biết điểm xuất phát`, first: true };
     if (Date.now() - runs[0].at > 21 * 864e5) { const nx = es.find(x => !history(x.id).length) || es[0]; return { e: nx, why: `Lần đo gần nhất ${runs[0].score}%, đã hơn 3 tuần. Đo lại xem tiến bộ chưa` }; }
   }
   return null;
@@ -307,31 +309,37 @@ X.scoreCard = () => {
 
 /* ---------------- bài thi đủ 200 câu: ghép Đề 1 của 7 Part, làm liền một mạch ---------------- */
 let fullMem = {};   // bài làm + kết quả trong phiên này, để chữa từng câu (không lưu vào bộ nhớ máy vì quá nặng)
-const FULL = () => [1, 2, 3, 4, 5, 6, 7].map(p => X.EXAMS.find(e => e.part === p)).filter(Boolean);
+// mỗi Part chọn đề học sinh CHƯA làm (kể cả làm lẻ ở trang Đề thi); hết đề mới thì lấy đề làm lâu nhất
+const lastAt = e => { const h = history(e.id); return h.length ? Math.max(...h.map(x => x.at)) : 0; };
+const pickFull = () => [1, 2, 3, 4, 5, 6, 7].map(p => { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) return null;
+  const fresh = es.find(e => !history(e.id).length); return { e: fresh || es.slice().sort((a, b) => lastAt(a) - lastAt(b))[0], seen: !fresh }; }).filter(Boolean);
+const FULL = run => run && run.ids ? run.ids.map(exById).filter(Boolean) : pickFull().map(x => x.e);
 X.route(/^\/fulltest$/, view => {
-  const es = FULL(), s = S(), run = s.fullRun, sv = X.sessGet('/fulltest');
+  const s = S(), run = s.fullRun && s.fullRun.i < 7 && !s.fullRun.saved ? s.fullRun : null;
+  const plan = run ? FULL(run).map(e => ({ e, seen: false })) : pickFull(), es = plan.map(x => x.e);
   const total = es.reduce((a, e) => a + X.examItems(e).length, 0);
-  const hist = s.tests.full || [];
-  view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi từng Part</a>
-    <div class="kicker" style="margin-top:14px">Thi thử đủ bài</div><h1 class="h1">Bài thi ${total} câu, như phòng thi thật</h1>
-    <p class="lead">Ghép Đề 1 của cả 7 Part thành một bài: phần Nghe chạy liền Part 1 → 4 (khoảng 45 phút), rồi phần Đọc Part 5 → 7 dùng chung đồng hồ 75 phút. Làm xong có điểm từng Part và ước tính điểm TOEIC.</p>
+  const hist = s.tests.full || [], anySeen = plan.some(x => x.seen);
+  view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi</a>
+    <div class="kicker" style="margin-top:14px">Bài thi đầu vào</div><h1 class="h1">Bài thi ${total} câu, như phòng thi thật</h1>
+    <p class="lead">Làm một lần đủ 7 Part để biết mình đang ở đâu: phần Nghe chạy liền Part 1 → 4 (khoảng 45 phút), phần Đọc Part 5 → 7 dùng chung đồng hồ 75 phút. Xong bài có điểm từng Part, ước tính điểm TOEIC và gợi ý nên học Part nào trước.</p>
     <div class="grid g2 sec"><div class="card"><div class="h3" style="margin-bottom:8px">Chuẩn bị</div><ul class="small ex-ul">
       <li>Dành trọn khoảng 2 tiếng, ngồi chỗ yên tĩnh, đeo tai nghe.</li><li>Phần nghe không dừng lại, không nghe lại. Giữa các Part có màn hình chờ, bấm là sang Part sau.</li>
       <li>Phần đọc: hết 75 phút là tự nộp. Gợi ý chia giờ: Part 5 ~11 phút, Part 6 ~9 phút, Part 7 ~55 phút.</li><li>Thoát giữa chừng vẫn lưu, lần sau vào đây làm tiếp đúng Part đang dở.</li></ul></div>
-      <div class="card"><div class="h3" style="margin-bottom:8px">Các phần</div>${es.map((e, i) => `<div class="row small" style="margin:4px 0"><span class="pill ${run && run.i > i ? 'sage' : run && run.i === i ? 'gold' : ''}">Part ${e.part}</span><span class="muted">${X.examItems(e).length} câu</span>${run && run.res[i] ? `<span class="grow"></span><b>${run.res[i].correct}/${run.res[i].total}</b>` : ''}</div>`).join('')}
+      <div class="card"><div class="h3" style="margin-bottom:4px">Bài này gồm</div><div class="small muted" style="margin-bottom:8px">Mỗi Part tự chọn đề bạn chưa làm, để không gặp lại câu cũ.</div>${plan.map(({ e, seen }, i) => `<div class="row small" style="margin:4px 0"><span class="pill ${run && run.i > i ? 'sage' : run && run.i === i ? 'gold' : ''}">Part ${e.part}</span><span class="muted">${esc(e.n)} - ${X.examItems(e).length} câu</span>${seen ? '<span class="pill ember" title="Bạn đã làm hết các đề của Part này">đã gặp</span>' : ''}${run && run.res[i] ? `<span class="grow"></span><b>${run.res[i].correct}/${run.res[i].total}</b>` : ''}</div>`).join('')}
+      ${anySeen ? '<div class="small" style="margin-top:8px;color:var(--ember)">Part có nhãn “đã gặp”: bạn đã làm hết đề của Part đó, bài này lấy lại đề làm lâu nhất nên điểm Part đó có thể cao hơn thực lực.</div>' : ''}
       ${hist.length ? `<div class="small faint" style="margin-top:8px">Đã làm ${hist.length} lần - gần nhất ${hist[hist.length - 1].correct}/${hist[hist.length - 1].total} câu${hist[hist.length - 1].est ? `, ước tính ~${hist[hist.length - 1].est}` : ''}</div>` : ''}</div></div>
-    ${X.scoreCard()}
-    <div class="row sec">${run && run.i < es.length ? `<button class="btn pri lg" id="ft-cont">Làm tiếp Part ${es[run.i].part} ${icon('arrow')}</button><button class="btn lg" id="ft-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ft-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
+    <div class="row sec">${run && run.i > 0 ? `<button class="btn pri lg" id="ft-cont">Làm tiếp Part ${es[run.i].part} ${icon('arrow')}</button><button class="btn lg" id="ft-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ft-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
   const start = fresh => {
-    if (fresh) { X.sessDel('/fulltest'); fullMem = {}; s.fullRun = { at: Date.now(), i: 0, res: [], left: 75 * 60 }; X.save(); }
+    if (fresh) { X.sessDel('/fulltest'); fullMem = {}; s.fullRun = { at: Date.now(), i: 0, res: [], left: 75 * 60, ids: pickFull().map(x => x.e.id) }; X.save(); }
     step(view, fresh ? null : X.sessGet('/fulltest'));
   };
   $('#ft-go', view).onclick = () => { if (run && run.i > 0 && !confirm('Bỏ bài đang làm dở và làm lại từ đầu?')) return; start(true); };
   const c = $('#ft-cont', view); if (c) c.onclick = () => start(false);
 });
 function step(view, sv) {
-  const es = FULL(), run = S().fullRun;
-  if (!run) return X.go('#/fulltest');
+  const run = S().fullRun; if (!run) return X.go('#/fulltest');
+  if (!run.ids) run.ids = pickFull().map(x => x.e.id);
+  const es = FULL(run);
   if (run.i >= es.length) return fullResult(view);
   const e = es[run.i], items = X.examItems(e);
   if (sv && sv.exam !== e.id) sv = null;
@@ -349,20 +357,35 @@ function step(view, sv) {
     $('#ft-next', view).onclick = () => step(view, null);
   } });
 }
+// đánh giá từng nhóm Part sau bài 200 câu + cho học sinh chọn Part muốn học kỹ
+const LV = pc => pc >= 80 ? ['Vững', 'sage', 'Giữ phong độ: mỗi 2-3 tuần làm lại một đề.'] : pc >= 60 ? ['Khá', 'gold', 'Đã nắm cách làm, cần luyện tốc độ và tránh bẫy trong Lab.'] : pc >= 40 ? ['Còn hổng', 'ember', 'Học lại các bài trong Lộ trình, chữa kỹ câu sai.'] : ['Yếu', 'red', 'Bắt đầu từ bài 1 "Cách nghĩ và phương pháp" của Part này.'];
 function fullResult(view) {
-  const run = S().fullRun, es = FULL(); if (!run) return X.go('#/fulltest');
+  const run = S().fullRun; if (!run) return X.go('#/fulltest');
+  const es = FULL(run);
   const L = run.res.filter(r => r.part <= 4), R = run.res.filter(r => r.part >= 5), sum = a => a.reduce((x, r) => x + r.correct, 0), tot = a => a.reduce((x, r) => x + r.total, 0);
   const cl = (c, t) => conv(Math.round(100 * c / Math.max(1, t)), TBL.L), cr = (c, t) => conv(Math.round(100 * c / Math.max(1, t)), TBL.R);
   const eL = cl(sum(L), tot(L)), eR = cr(sum(R), tot(R));
   if (!run.saved) { (S().tests.full ||= []).push({ at: Date.now(), correct: sum(run.res), total: tot(run.res), score: pct(sum(run.res), tot(run.res)), ms: run.res.reduce((x, r) => x + (r.ms || 0), 0), est: eL + eR, parts: run.res.map(r => [r.part, r.correct, r.total]) }); run.saved = 1; X.save(); }
   const mem = fullMem;
-  view.innerHTML = `<div class="page"><div class="kicker">Bài thi 200 câu</div><div class="hello">${X.xi('happy', 92)}<div><h1 class="h1">Xong cả bài rồi!</h1><p class="lead">Ngồi đủ 2 tiếng đã là một kỹ năng. Giờ xem điểm từng phần và chữa chỗ mất điểm nhiều nhất.</p></div></div>
+  // gom theo nhóm Lộ trình (Part 3-4 chung một lộ trình)
+  const groups = X.PARTS.map(g => { const rs = run.res.filter(r => g.parts.includes(r.part)); return rs.length ? { g, c: sum(rs), t: tot(rs), pc: pct(sum(rs), tot(rs)) } : null; }).filter(Boolean);
+  const weak = groups.slice().sort((a, b) => a.pc - b.pc).slice(0, 2).map(x => x.g.k);
+  view.innerHTML = `<div class="page"><div class="kicker">Bài thi 200 câu</div><div class="hello">${X.xi('happy', 92)}<div><h1 class="h1">Xong cả bài rồi!</h1><p class="lead">Ngồi đủ 2 tiếng đã là một kỹ năng. Giờ xem mình mạnh, yếu ở đâu rồi chọn Part để học kỹ.</p></div></div>
     <div class="card sec"><div class="res-head"><div class="big-score">${sum(run.res)}<small>/${tot(run.res)}</small></div>
       <div><div class="row"><span class="pill syn">Ước tính ~${eL + eR}/990</span><span class="pill">Nghe ~${eL}</span><span class="pill">Đọc ~${eR}</span></div><div class="small muted" style="margin-top:8px">Ước tính thô theo bảng quy đổi phổ biến, sai số khoảng ±50 điểm.</div></div></div></div>
-    <div class="card sec"><table class="dt"><tr><th>Part</th><th class="num">Đúng</th><th class="num">Tỉ lệ</th><th></th></tr>
+    <div class="card sec"><div class="h3" style="margin-bottom:4px">Đánh giá từng Part và chọn Part muốn học kỹ</div><div class="small muted" style="margin-bottom:12px">Tooez đã tick sẵn 2 Part yếu nhất. Bạn đổi tùy ý: Part nào được chọn sẽ hiện trong Hôm nay và Lộ trình.</div>
+      <div class="ft-eval">${groups.map(({ g, c, t, pc }) => { const [lv, col, tip] = LV(pc); return `<label class="ft-row"><input type="checkbox" value="${g.k}" ${weak.includes(g.k) ? 'checked' : ''}><span class="grow"><b>${esc(g.n)}</b> <span class="pill ${col}">${lv} - ${c}/${t} (${pc}%)</span><span class="small muted ft-tip">${tip}</span></span></label>`; }).join('')}</div>
+      <div class="row" style="margin-top:12px"><button class="btn pri" id="ft-focus">Lưu và bắt đầu học ${icon('arrow')}</button></div></div>
+    <div class="card sec"><div class="h3" style="margin-bottom:8px">Chữa bài</div><table class="dt"><tr><th>Part</th><th class="num">Đúng</th><th class="num">Tỉ lệ</th><th></th></tr>
       ${run.res.map((r, i) => { const pc = pct(r.correct, r.total); return `<tr><td>Part ${r.part}</td><td class="num">${r.correct}/${r.total}</td><td class="num"><span class="pill ${pc >= 80 ? 'sage' : pc >= 60 ? 'gold' : 'red'}">${pc}%</span></td><td class="num">${mem[i] ? `<button class="btn sm" data-rv="${i}">Chữa từng câu</button>` : `<a class="btn sm" href="#/errors">Sổ lỗi</a>`}</td></tr>`; }).join('')}</table>
-      <div class="small faint" style="margin-top:8px">Câu sai của cả bài đã vào Sổ lỗi. Nên chữa Part có tỉ lệ thấp nhất trước.</div></div>
-    <div class="row sec"><a class="btn pri" href="#/errors">${icon('err')} Mở Sổ lỗi</a><a class="btn" href="#/tests">Về Đề thi</a></div></div>`;
+      <div class="small faint" style="margin-top:8px">Câu sai của cả bài đã vào Sổ lỗi.</div></div>
+    <div class="row sec"><a class="btn" href="#/errors">${icon('err')} Mở Sổ lỗi</a><a class="btn" href="#/tests">Về Đề thi</a></div></div>`;
   $$('[data-rv]', view).forEach(b => b.onclick = () => { const i = +b.dataset.rv, m = mem[i]; review(view, es[i], m.items, m.res, () => fullResult(view)); });
+  $('#ft-focus', view).onclick = () => {
+    const pick = $$('.ft-eval input:checked', view).map(x => x.value);
+    if (!pick.length) return X.toast('Chọn ít nhất 1 Part');
+    const p = S().profile; p.focus = [...(p.focus || []).filter(k => k === 'nen' || k === 'hieu'), ...pick]; X.save();
+    X.toast('Đã lưu. Hôm nay và Lộ trình sẽ ưu tiên các Part này.'); X.go('#/path/' + pick[0]);
+  };
 }
 })();

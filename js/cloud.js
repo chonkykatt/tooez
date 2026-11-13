@@ -220,7 +220,7 @@ X.renderSide = (...a) => {
 document.addEventListener('click', e => { document.querySelectorAll('details.lg-dd[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
 let admin = false;
 // tài khoản có trong bảng public.admins thì được vào trang Soạn đề
-const checkAdmin = async () => { admin = false; if (!user) return; try { const { data } = await sb.rpc('is_admin'); admin = data === true; } catch (e) { admin = false; } if (admin) { X.renderSide && X.renderSide(); if (/^\/soan/.test(X.hereKey())) X.render(); } };
+const checkAdmin = async () => { admin = false; if (!user) return; try { const { data } = await sb.rpc('is_admin'); admin = data === true; } catch (e) { admin = false; } if (admin && document.readyState !== 'loading') { X.renderSide && X.renderSide(); if (/^\/soan/.test(X.hereKey())) X.render(); } /* trang còn đang nạp thì lần vẽ đầu tiên sẽ tự thấy quyền admin */ };
 X.cloud = { on: true, user: () => user, google, login, signOut, syncNow, sb: () => sb, admin: () => admin, ready: () => ready };
 
 /* ---------- khởi động ---------- */
@@ -244,11 +244,11 @@ const lib = () => new Promise((res, rej) => { if (window.supabase && window.supa
     let back = ''; try { back = sessionStorage.getItem('tooez.back') || ''; sessionStorage.removeItem('tooez.back'); } catch (e) {}
     history.replaceState(null, '', location.pathname + (back || location.hash || '#/today'));
     if (errDesc) X.toast(esc(errDesc), 5000);
-    if (!recovery) X.render();
+    if (!recovery && document.readyState !== 'loading') X.render();
   }
   ready = true;
   if (user) { firstSync(); checkAdmin(); } else { refresh(); paintCards(); }
-  if (!user && hadSession && X.hereKey() === '/today') X.render();
+  if (!user && hadSession && X.hereKey() === '/today' && document.readyState !== 'loading') X.render();
   setInterval(() => syncNow(false), 20000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') syncNow(false); else syncNow(true); });
   window.addEventListener('online', () => syncNow(true));

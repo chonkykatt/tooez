@@ -206,8 +206,8 @@ X.route(/^\/lesson\/(.+)$/, async (view, id) => {
   // toc
   const hs = $$('#ls-body h2, #ls-body h3', view);
   hs.forEach((h, i) => h.id = 'h' + i);
-  $('#ls-toc', view).innerHTML = hs.length > 2 ? `<div class="kicker" style="margin-bottom:8px">Trong bài</div>${hs.map((h, i) => `<a href="javascript:void 0" data-h="${i}" style="${h.tagName === 'H3' ? 'padding-left:22px' : ''}">${esc(h.textContent.slice(0, 48))}</a>`).join('')}` : '';
-  $$('#ls-toc a', view).forEach(a => a.onclick = () => $('#h' + a.dataset.h, view).scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  $('#ls-toc', view).innerHTML = hs.length > 2 ? `<div class="kicker" style="margin-bottom:8px">Trong bài</div>${hs.map((h, i) => `<a href="#" data-h="${i}" style="${h.tagName === 'H3' ? 'padding-left:22px' : ''}">${esc(h.textContent.slice(0, 48))}</a>`).join('')}` : '';
+  $$('#ls-toc a', view).forEach(a => a.onclick = e => { e.preventDefault(); $('#h' + a.dataset.h, view).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   // click english sentences to hear
   $$('#ls-body td, #ls-body li, #ls-body p', view).forEach(el => {
     const t = el.textContent.trim();

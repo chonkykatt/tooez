@@ -77,7 +77,7 @@ X.smartOpts = (w, n, mode) => {
   if (out.length < n) out = uniq(out.concat(rank(base.filter(x => x.topic !== w.topic || x.group !== w.group), () => 0).map(x => head(x)))).filter(t => lc(t) !== lc(k));
   return out.slice(0, n);
 };
-X.clozeHint = w => `<button class="btn sm ghost" type="button" onclick="this.outerHTML=this.dataset.h" data-h="${esc(w.def ? `Gợi ý: <i>${esc(w.def)}</i>` : `Gợi ý: ${esc(w.vi)}`)}">Cần gợi ý?</button>`;
+X.clozeHint = w => `<button class="btn sm ghost" type="button" data-hint data-h="${esc(w.def ? `Gợi ý: <i>${esc(w.def)}</i>` : `Gợi ý: ${esc(w.vi)}`)}">Cần gợi ý?</button>`;
 
 const ROUNDS = [
   { k: 'discover', n: 'Khám phá', d: 'Đoán từ trong câu rồi xem thẻ từ', ab: 'Đoán từ ngữ cảnh' },

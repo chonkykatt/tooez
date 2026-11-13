@@ -48,7 +48,7 @@ X.donateBox = (compact) => {
   const bankLine = d.account ? `<div class="dn-bank"><div><span class="muted small">Ngân hàng</span><b>${esc(d.bank)}</b></div><div><span class="muted small">Số tài khoản</span><b class="mono dn-copy" data-copy="${esc(d.account)}" title="Bấm để chép">${esc(d.account)}</b></div>${d.holder ? `<div><span class="muted small">Chủ tài khoản</span><b>${esc(d.holder)}</b></div>` : ''}${d.note ? `<div><span class="muted small">Nội dung</span><b class="mono">${esc(d.note)}</b></div>` : ''}</div>` : '';
   const links = [d.momo ? `<a class="btn sm" target="_blank" rel="noopener" data-track="donate-momo" href="${esc(/^https?:/.test(d.momo) ? d.momo : '#')}">${/^https?:/.test(d.momo) ? 'Momo' : 'Momo: ' + esc(d.momo)}</a>` : '',
     d.kofi ? `<a class="btn sm" target="_blank" rel="noopener" data-track="donate-kofi" href="${esc(d.kofi)}">☕ Ko-fi</a>` : ''].join('');
-  const qr = d.qr ? `<figure class="dn-qrbox"><div class="dn-qr"><img src="${esc(d.qr)}" alt="Mã QR ủng hộ" onerror="this.closest('.dn-qrbox').remove()"></div><figcaption>Quét bằng app ngân hàng nào cũng được</figcaption></figure>` : '';
+  const qr = d.qr ? `<figure class="dn-qrbox"><div class="dn-qr"><img src="${esc(d.qr)}" alt="Mã QR ủng hộ" data-fail="rm:.dn-qrbox"></div><figcaption>Quét bằng app ngân hàng nào cũng được</figcaption></figure>` : '';
   const extra = bankLine || links ? `<div class="dn-extra">${bankLine}${links ? `<div class="row" style="margin-top:10px">${links}</div>` : ''}</div>` : (!d.qr ? `<div class="small faint">Thông tin nhận ủng hộ sẽ sớm cập nhật.</div>` : '');
   return `<div class="card donate ${compact ? 'compact' : ''}">
     <div class="dn-main">
@@ -112,7 +112,7 @@ X.route(/^\/coach$/, view => {
       <div class="field" style="margin-top:12px"><label>Bạn đang để ý gói nào?</label><div class="seg" id="ch-pkseg"><button data-v="" class="on">Chưa biết nữa</button>${pk.map(p => `<button data-v="${p.id}">${esc(p.name)}</button>`).join('')}</div></div>
       <textarea class="inp" id="ch-msg" rows="6" style="margin-top:10px;width:100%;font-family:inherit"></textarea>
       <div class="ch-send"><div class="grow"><div class="row btn-row" style="margin-top:10px;flex-wrap:wrap"><button class="btn" id="ch-copy">${icon('check')} Chép tin nhắn</button><span class="small muted br-sep">rồi gửi qua</span>${contactBtns()}</div></div>
-        ${(o.contact || {}).zaloQr ? `<div class="ch-zqr"><div class="dn-qr"><img src="${esc(o.contact.zaloQr)}" alt="Mã QR Zalo" onerror="this.closest('.ch-zqr').remove()"></div><div class="small muted">Đang dùng máy tính?<br>Quét bằng Zalo trên điện thoại</div></div>` : ''}</div>
+        ${(o.contact || {}).zaloQr ? `<div class="ch-zqr"><div class="dn-qr"><img src="${esc(o.contact.zaloQr)}" alt="Mã QR Zalo" data-fail="rm:.ch-zqr"></div><div class="small muted">Đang dùng máy tính?<br>Quét bằng Zalo trên điện thoại</div></div>` : ''}</div>
       ${S().profile.current || S().profile.target ? '' : `<div class="small faint" style="margin-top:8px">Mẹo: điền điểm hiện tại, mục tiêu, ngày thi ở <a href="#/settings">Hồ sơ</a> để tin nhắn tự điền sẵn.</div>`}</div>
     ${X.tmNote()}
   </div>`;
@@ -147,7 +147,7 @@ const donateBig = () => {
       <div class="dn-goals-t small muted">Tiền ủng hộ dùng để</div><ul class="dn-goals">${(d.goals || []).map(([ic, t]) => `<li><span>${ic}</span>${esc(t)}</li>`).join('')}</ul>
     </div>
     <div class="dn2-r">
-      ${d.qr ? `<figure class="dn-qrbox"><div class="dn-qr big"><img src="${esc(d.qr)}" alt="Mã QR ủng hộ" onerror="this.closest('.dn-qrbox').remove()"></div><figcaption>Quét bằng app ngân hàng nào cũng được</figcaption></figure>` : ''}
+      ${d.qr ? `<figure class="dn-qrbox"><div class="dn-qr big"><img src="${esc(d.qr)}" alt="Mã QR ủng hộ" data-fail="rm:.dn-qrbox"></div><figcaption>Quét bằng app ngân hàng nào cũng được</figcaption></figure>` : ''}
       <div class="thanks"><div class="thanks-h">${icon('heart')} Bảng cảm ơn</div>
         ${donors.length ? `<ul>${donors.slice(0, 40).map(x => `<li><b>${esc(x.name)}</b>${x.msg ? `<span class="small muted">“${esc(x.msg)}”</span>` : ''}${x.date ? `<span class="small faint">${esc(x.date)}</span>` : ''}</li>`).join('')}</ul>${donors.length > 40 ? `<div class="small faint">và ${donors.length - 40} bạn nữa ❤️</div>` : ''}`
           : `<div class="small muted">Bảng đang chờ cái tên đầu tiên. Ghi tên trong nội dung chuyển khoản là tên bạn sẽ ở đây.</div>`}</div>
@@ -156,7 +156,7 @@ const donateBig = () => {
 const vibeCard = () => {
   const v = O().vibe || {}, n = S().luck || 0;
   return `<div class="card vibe" id="xin-via">
-    <figure class="vibe-cert"><img src="${esc(v.cert || 'img/cert.jpg')}" alt="Chứng chỉ TOEIC" onerror="this.parentNode.classList.add('noimg');this.remove()"><div class="vibe-ph"><b>${esc(v.score || '950+')}</b><span>TOEIC Listening & Reading</span></div><figcaption>${esc(v.caption || '')}</figcaption></figure>
+    <figure class="vibe-cert"><img src="${esc(v.cert || 'img/cert.jpg')}" alt="Chứng chỉ TOEIC" data-fail="noimg"><div class="vibe-ph"><b>${esc(v.score || '950+')}</b><span>TOEIC Listening & Reading</span></div><figcaption>${esc(v.caption || '')}</figcaption></figure>
     <div class="vibe-r"><div class="kicker">Xin vía ${esc(v.score || '950+')} ✨</div><h2 class="h2">Ấn vào mèo để xin vía điểm cao</h2>
       <p class="small muted">Tooez sẽ hóa mèo may mắn và truyền vía cho bạn. Xin bao nhiêu lần cũng được, nhưng nhớ là vía chỉ phát huy khi đi kèm chăm học 😼</p>
       <button class="vibe-cat" id="vibe-go" aria-label="Xin vía">${X.xi('happy', 150, 'vibe-xi')}<span class="vibe-tap">Ấn để xin vía</span></button>
@@ -209,7 +209,7 @@ X.route(/^\/about$/, view => {
       <h1 class="h1">Biết mình sai ở đâu,<br>luyện đúng chỗ đó.</h1>
       <p class="lead">Làm đề từng Part như thi thật, chữa từng câu sai, rồi luyện lại đến khi thành phản xạ. Có chú mèo Tooez học cùng bạn mỗi ngày.</p>
       <div class="intro-chips"><span>${icon('check')} Miễn phí 100%</span><span>${icon('check')} Đăng nhập Google hoặc email</span><span>${icon('check')} Tiến độ lưu trên mọi máy</span></div>
-      <div class="row" style="margin-top:18px;flex-wrap:wrap"><button class="btn pri lg" id="ab-start">${old ? `Học tiếp, ${esc(p.name)}` : 'Bắt đầu học'} ${icon('arrow')}</button><a class="btn lg" href="#ung-ho" id="ab-dn" data-track="intro-ung-ho">❤️ Ủng hộ TOOEZ</a></div>${X.cloud && X.cloud.on && !X.cloud.user() ? `<div class="small" style="margin-top:12px">Đã học ở máy khác? <a href="javascript:void 0" onclick="X.cloud.login()"><b>Đăng nhập để lấy lại tiến độ</b></a></div>` : ''}</div>
+      <div class="row" style="margin-top:18px;flex-wrap:wrap"><button class="btn pri lg" id="ab-start">${old ? `Học tiếp, ${esc(p.name)}` : 'Bắt đầu học'} ${icon('arrow')}</button><a class="btn lg" href="#ung-ho" id="ab-dn" data-track="intro-ung-ho">❤️ Ủng hộ TOOEZ</a></div>${X.cloud && X.cloud.on && !X.cloud.user() ? `<div class="small" style="margin-top:12px">Đã học ở máy khác? <a href="#" data-cl-login><b>Đăng nhập để lấy lại tiến độ</b></a></div>` : ''}</div>
       <div class="intro-cat">${X.xi('happy', 150)}</div></div>
 
     <div class="sec">${vibeCard()}</div>

@@ -56,7 +56,13 @@
     return true;
   }
   const DONE = new Set();   // mỗi bản sửa chỉ áp dụng 1 lần (dữ liệu nạp muộn thì lần sau mới áp được)
+  // nội dung soạn trên web được phép có HTML định dạng (đậm, bảng…) nhưng không được có script / sự kiện / link javascript:
+  const BAD_TAG = /<\s*\/?\s*(script|iframe|object|embed|link|meta|style|base|form|svg|math)\b[^>]*>/gi;
+  const clean = v => typeof v === 'string' ? v.replace(BAD_TAG, '').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/(href|src)\s*=\s*(["']?)\s*(javascript|vbscript|data:text)/gi, '$1=$2#')
+    : Array.isArray(v) ? v.map(clean) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)])) : v;
+  const safeUrl = u => typeof u === 'string' && /^(https:\/\/|img\/|audio\/)/.test(u) ? u : '';
   function apply(list) {
+    list = list.map(r => { const d = clean(r.data || {}); if (d && typeof d === 'object') { if ('img' in d) d.img = safeUrl(d.img); if ('u' in d) d.u = safeUrl(d.u); } return Object.assign({}, r, { data: d }); });
     const pics = [];
     const run = r => { const sig = r.kind + '|' + r.id + '|' + JSON.stringify(r.data); if (DONE.has(sig)) return; let ok = true;
       try { if (r.kind === 'aud') { (window.TOOEZ_AUD || (window.TOOEZ_AUD = {}))[r.id] = r.data.u; return DONE.add(sig); } if (r.kind === 'item') applyItem(r.id, r.data); else if (r.kind === 'pic') applyPic(r.id, r.data); else if (r.kind === 'exam') applyExam(r.id, r.data); else if (r.kind === 'add') ok = applyAdd(r.id, r.data); else if (r.kind === 'obj') ok = applyObj(r.id, r.data); } catch (e) { ok = false; console.warn('content', r.id, e); }

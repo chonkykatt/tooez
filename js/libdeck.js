@@ -5,7 +5,7 @@ const { $, $$, esc, icon } = X;
 const S = () => X.S();
 X.libData = pk => pk === 'p1' ? window.P1LIB : (window.LIBDECK || {})[pk];
 const deckHref = (pk, id) => pk === 'p1' ? `#/p1lib/${id}` : `#/deck/${pk}/${id}`;
-const pic = name => name ? `<div class="wimg on deck-img"><img src="img/p1/${name}.jpg" alt="" onerror="this.parentNode.remove()"></div>` : '';
+const pic = name => name ? `<div class="wimg on deck-img"><img src="img/p1/${name}.jpg" alt="" data-fail="rmparent"></div>` : '';
 const sayBtn = t => `<button class="say sm" data-say="${esc(t)}" title="Nghe">${icon('play')}</button>`;
 const doneKey = (pk, id) => pk === 'p1' ? 'p1lib-' + id : `lib-${pk}-${id}`;
 

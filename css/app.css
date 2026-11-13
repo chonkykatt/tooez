@@ -1436,3 +1436,12 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .err.cmp.open .err-head>:not(.err-chev){display:none}
 .err.cmp.open .err-body{padding-top:16px}
 .err.cmp.open .err-body>.top{padding-right:34px}
+/* tài khoản */
+.acct-chip{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);padding:6px 8px;margin:0 0 8px;border-radius:10px;text-decoration:none}
+.acct-chip:hover{background:var(--paper-dim)}
+.acct-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--sage);flex:none}
+.acct-chip .dot.bad{background:var(--red)}
+.acct-chip.off .dot{background:var(--ember)}
+.acct-chip.off b{color:var(--syn)}
+.acct .acct-ic{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--sage);color:#fff;flex:none}
+.dmy select.inp{padding:9px 2px 9px 8px;min-width:0;flex:1}.dmy select[data-dmy=y]{flex:1.35}

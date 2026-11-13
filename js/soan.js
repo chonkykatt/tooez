@@ -33,16 +33,16 @@ async function upload(file) {
   if (error) throw error;
   return sb().storage.from('content').getPublicUrl(path).data.publicUrl;
 }
-const errText = e => { const m = String((e && e.message) || e); return /row-level|permission|not allowed|Unauthorized|JWT/i.test(m) ? 'Tài khoản này chưa có quyền admin trên Supabase.' : /relation|does not exist|schema cache/i.test(m) ? 'Chưa tạo bảng content_edits trên Supabase (chạy đoạn SQL Soạn đề).' : /Bucket not found/i.test(m) ? 'Chưa tạo kho ảnh "content" trên Supabase.' : m; };
+const errText = e => { const m = String((e && e.message) || e); return /row-level|permission|not allowed|Unauthorized|JWT/i.test(m) ? 'Tài khoản này chưa có quyền admin trên Supabase.' : /relation|does not exist|schema cache|Bucket not found/i.test(m) ? 'Máy chủ chưa được cài đặt đủ cho Soạn đề.' : 'Có lỗi khi lưu, thử lại sau.'; };
 
 /* ---------------- khung trang + kiểm tra quyền ---------------- */
 X.route(/^\/soan(?:\/(\w+))?(?:\/([^/]+))?$/, (view, tab, arg) => {
   tab = tab || 'de';
   const head = `<div class="page wide"><div class="kicker">Admin</div><h1 class="h1">Soạn đề</h1>`;
-  if (!X.cloud || !X.cloud.on) { view.innerHTML = head + '<p class="lead">Chưa bật đăng nhập (js/cloud-config.js).</p></div>'; return; }
-  if (!X.cloud.ready()) { view.innerHTML = head + '<p class="lead">Đang kiểm tra đăng nhập…</p></div>'; setTimeout(() => X.hereKey().startsWith('/soan') && X.render(), 800); return; }
-  if (!X.cloud.user()) { view.innerHTML = head + `<p class="lead">Đăng nhập bằng tài khoản admin để soạn đề.</p><button class="btn pri" id="sd-login">Đăng nhập</button></div>`; $('#sd-login', view).onclick = () => X.cloud.login(); return; }
-  if (!X.cloud.admin()) { view.innerHTML = head + `<p class="lead">Tài khoản <b>${esc(X.cloud.user().email || '')}</b> chưa có quyền soạn đề.</p><p class="small muted">Vào Supabase → SQL Editor, chạy: <code>insert into public.admins(email) values ('email-của-bạn');</code> rồi tải lại trang.</p></div>`; return; }
+  if (!X.cloud || !X.cloud.on) { view.innerHTML = '<div class="page"><h1 class="h1">Không tìm thấy trang</h1><p><a href="#/today">Về trang Hôm nay</a></p></div>'; return; }
+  if (!X.cloud.ready()) { view.innerHTML = '<div class="page"><p class="muted">Đang tải…</p></div>'; setTimeout(() => X.hereKey().startsWith('/soan') && X.render(), 800); return; }
+  if (!X.cloud.user()) { view.innerHTML = '<div class="page"><h1 class="h1">Không tìm thấy trang</h1><p><a href="#/today">Về trang Hôm nay</a></p></div>'; return; }
+  if (!X.cloud.admin()) { view.innerHTML = '<div class="page"><h1 class="h1">Không tìm thấy trang</h1><p><a href="#/today">Về trang Hôm nay</a></p></div>'; return; }
   view.innerHTML = head + `<p class="lead">Sửa xong bấm Lưu là học sinh thấy ở lần mở web tiếp theo, không cần đưa lại thư mục lên Netlify.</p>
     <div class="seg sec wrap" id="sd-tab">${[['de', 'Đề thi'], ['lo', 'Lộ trình'], ['lab', 'Lab phản xạ'], ['the', 'Thẻ học'], ['tu', 'Từ vựng'], ['anh', 'Ảnh Part 1'], ['khac', 'Khác'], ['tim', 'Tìm câu']].map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div id="sd-main" class="sec"></div></div>`;

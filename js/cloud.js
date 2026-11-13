@@ -39,7 +39,7 @@ const errMsg = e => { const m = String((e && (e.message || e.error_description))
   if (/Invalid login/i.test(m)) return 'Sai email hoặc mật khẩu.';
   if (/Email not confirmed/i.test(m)) return 'Email chưa được xác nhận. Mở hộp thư (cả mục Spam) và bấm link xác nhận.';
   if (/already registered|already been registered/i.test(m)) return 'Email này đã có tài khoản. Chuyển sang Đăng nhập, hoặc dùng Quên mật khẩu.';
-  if (/at least|Password should/i.test(m)) return 'Mật khẩu cần ít nhất 6 ký tự.';
+  if (/at least|Password should/i.test(m)) return 'Mật khẩu chưa đủ mạnh (ít nhất 8 ký tự, nên có cả chữ và số).';
   if (/rate limit|too many/i.test(m)) return 'Thử quá nhiều lần, đợi vài phút rồi thử lại.';
   if (/relation|does not exist|schema cache/i.test(m)) return 'Chưa tạo bảng lưu tiến độ trên Supabase.';
   return m || 'Có lỗi, thử lại sau.'; };
@@ -84,6 +84,13 @@ async function syncNow(checkRemote) {
 }
 
 /* ---------- đăng nhập / đăng xuất ---------- */
+// sai mật khẩu 5 lần liền → khóa ô đăng nhập 5 phút (chặn dò mật khẩu trên web; phía Supabase còn có giới hạn riêng)
+const LK = 'tooez.lock', MAXF = 5, LOCKMS = 5 * 60 * 1000;
+const lockGet = () => { try { return JSON.parse(localStorage.getItem(LK) || '{}'); } catch (e) { return {}; } };
+const lockSet = o => { try { localStorage.setItem(LK, JSON.stringify(o)); } catch (e) {} };
+const lockLeft = () => { const o = lockGet(); return o.until && o.until > Date.now() ? o.until - Date.now() : 0; };
+const lockFail = () => { const o = lockGet(); const n = (o.until && o.until <= Date.now() ? 0 : o.n || 0) + 1; lockSet(n >= MAXF ? { n: 0, until: Date.now() + LOCKMS } : { n, until: 0 }); return MAXF - n; };
+const lockMsg = () => `Sai quá ${MAXF} lần. Thử lại sau ${Math.ceil(lockLeft() / 60000)} phút.`;
 const backTo = () => location.origin + location.pathname;
 const remember = () => { try { sessionStorage.setItem('tooez.back', location.hash || '#/today'); } catch (e) {} };
 async function google() {
@@ -101,7 +108,7 @@ function emailBox(tab = 'in') {
     <div class="cl-or small faint"><span>hoặc dùng email</span></div>
     <div class="seg" id="cl-tab" style="margin-bottom:14px"><button data-t="in">Đăng nhập</button><button data-t="up">Tạo tài khoản</button><button data-t="fg">Quên mật khẩu</button></div>
     <div class="field"><label>Email</label><input class="inp" id="cl-mail" type="email" autocomplete="email" inputmode="email" placeholder="ban@gmail.com"></div>
-    <div class="field" id="cl-pw-f"><label>Mật khẩu</label><input class="inp" id="cl-pw" type="password" autocomplete="current-password" placeholder="Ít nhất 6 ký tự"></div>
+    <div class="field" id="cl-pw-f"><label>Mật khẩu</label><input class="inp" id="cl-pw" type="password" autocomplete="current-password" placeholder="Ít nhất 8 ký tự"></div>
     <div class="small" id="cl-msg" style="min-height:20px;margin:6px 0"></div>
     <div class="row"><button class="btn" id="cl-go"></button></div>`, (m, close) => {
     const msg = (t, ok) => { const el = $('#cl-msg', m); el.innerHTML = t; el.style.color = ok ? 'var(--sage)' : 'var(--red)'; };
@@ -114,11 +121,16 @@ function emailBox(tab = 'in') {
     const go = async () => {
       const email = $('#cl-mail', m).value.trim(), password = $('#cl-pw', m).value;
       if (!/^\S+@\S+\.\S+$/.test(email)) return msg('Nhập đúng địa chỉ email.');
-      if (tab !== 'fg' && password.length < 6) return msg('Mật khẩu cần ít nhất 6 ký tự.');
+      if (tab === 'up' && password.length < 8) return msg('Mật khẩu cần ít nhất 8 ký tự.');
+      if (tab === 'in' && !password) return msg('Nhập mật khẩu.');
       if (!sb) return msg('Đang tải phần đăng nhập, bấm lại sau 1-2 giây.');
       const b = $('#cl-go', m); b.disabled = true;
       try {
-        if (tab === 'in') { const { error } = await sb.auth.signInWithPassword({ email, password }); if (error) throw error; close(); }
+        if (tab === 'in') {
+          if (lockLeft()) return msg(lockMsg());
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) { if (/Invalid login/i.test(error.message || '')) { const left = lockFail(); return msg(lockLeft() ? lockMsg() : `Sai email hoặc mật khẩu. Còn ${left} lần thử.`); } throw error; }
+          lockSet({}); close(); }
         else if (tab === 'up') { remember(); const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: backTo() } }); if (error) throw error;
           if (data.session) close(); else msg('Đã tạo tài khoản. Mở email (cả mục Spam), bấm link xác nhận, rồi quay lại đây đăng nhập.', true); }
         else { remember(); const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: backTo() }); if (error) throw error; msg('Đã gửi link đặt lại mật khẩu vào email (xem cả mục Spam).', true); }
@@ -128,9 +140,9 @@ function emailBox(tab = 'in') {
   });
 }
 function newPassword() {
-  X.modal(`<div class="h3">Đặt mật khẩu mới</div><div class="field" style="margin-top:12px"><label>Mật khẩu mới</label><input class="inp" id="cl-np" type="password" autocomplete="new-password" placeholder="Ít nhất 6 ký tự"></div>
+  X.modal(`<div class="h3">Đặt mật khẩu mới</div><div class="field" style="margin-top:12px"><label>Mật khẩu mới</label><input class="inp" id="cl-np" type="password" autocomplete="new-password" placeholder="Ít nhất 8 ký tự"></div>
     <div class="small" id="cl-msg" style="min-height:20px;margin:6px 0;color:var(--red)"></div><button class="btn pri" id="cl-ok">Lưu mật khẩu</button>`, (m, close) => {
-    $('#cl-ok', m).onclick = async () => { const pw = $('#cl-np', m).value; if (pw.length < 6) return ($('#cl-msg', m).textContent = 'Mật khẩu cần ít nhất 6 ký tự.');
+    $('#cl-ok', m).onclick = async () => { const pw = $('#cl-np', m).value; if (pw.length < 8) return ($('#cl-msg', m).textContent = 'Mật khẩu cần ít nhất 8 ký tự.');
       const { error } = await sb.auth.updateUser({ password: pw }); if (error) return ($('#cl-msg', m).textContent = errMsg(error)); close(); X.toast('Đã đổi mật khẩu'); };
   });
 }

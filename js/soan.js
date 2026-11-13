@@ -43,7 +43,7 @@ X.route(/^\/soan(?:\/(\w+))?(?:\/([^/]+))?$/, (view, tab, arg) => {
   if (!X.cloud.user()) { view.innerHTML = head + `<p class="lead">Đăng nhập bằng tài khoản admin để soạn đề.</p><button class="btn pri" id="sd-login">Đăng nhập</button></div>`; $('#sd-login', view).onclick = () => X.cloud.login(); return; }
   if (!X.cloud.admin()) { view.innerHTML = head + `<p class="lead">Tài khoản <b>${esc(X.cloud.user().email || '')}</b> chưa có quyền soạn đề.</p><p class="small muted">Vào Supabase → SQL Editor, chạy: <code>insert into public.admins(email) values ('email-của-bạn');</code> rồi tải lại trang.</p></div>`; return; }
   view.innerHTML = head + `<p class="lead">Sửa xong bấm Lưu là học sinh thấy ở lần mở web tiếp theo, không cần đưa lại thư mục lên Netlify.</p>
-    <div class="seg sec" id="sd-tab">${[['de', 'Đề thi'], ['anh', 'Ảnh Part 1'], ['tim', 'Tìm câu bất kỳ']].map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg sec wrap" id="sd-tab">${[['de', 'Đề thi'], ['lo', 'Lộ trình'], ['lab', 'Lab phản xạ'], ['the', 'Thẻ học'], ['tu', 'Từ vựng'], ['anh', 'Ảnh Part 1'], ['khac', 'Khác'], ['tim', 'Tìm câu']].map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div id="sd-main" class="sec"></div></div>`;
   $$('#sd-tab button', view).forEach(b => b.onclick = () => X.go('#/soan/' + b.dataset.t));
   const main = $('#sd-main', view);
@@ -51,6 +51,13 @@ X.route(/^\/soan(?:\/(\w+))?(?:\/([^/]+))?$/, (view, tab, arg) => {
   if (tab === 'anh') return picTab(main, arg);
   if (tab === 'tim') return searchTab(main);
   if (tab === 'cau') return itemForm(main, decodeURIComponent(arg || ''));
+  if (tab === 'lo') return pathTab(main, arg && decodeURIComponent(arg));
+  if (tab === 'lab') return labTab(main, arg && decodeURIComponent(arg));
+  if (tab === 'the') return deckTab(main, arg && decodeURIComponent(arg));
+  if (tab === 'tu') return vocabTab(main, arg && decodeURIComponent(arg));
+  if (tab === 'khac') return otherTab(main);
+  if (tab === 'arr') return arrPage(main, decodeURIComponent(arg || ''));
+  if (tab === 'obj') return objForm(main, decodeURIComponent(arg || ''));
 });
 
 /* ---------------- Đề thi ---------------- */
@@ -185,6 +192,132 @@ function searchTab(main) {
   run(''); $('#sq', main).oninput = ev => run(ev.target.value.trim().toLowerCase());
 }
 
+/* ================= Sửa mọi dạng bài: form tự sinh theo dữ liệu ================= */
+const enc = s => encodeURIComponent(s);
+const R = p => CT().resolve(p);
+const LBL = { q: 'Câu hỏi / đề', a: 'Đáp án', o: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', opts: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', options: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', answer: 'Đáp án đúng (0 = A, 1 = B…)',
+  why: 'Giải thích', explain: 'Giải thích', reveal: 'Giải thích sau khi trả lời', rule: 'Quy tắc', h: 'Tiêu đề thẻ', b: 'Nội dung', big: 'Dòng chữ to', t: 'Tiêu đề / nội dung', title: 'Tiêu đề', vi: 'Nghĩa tiếng Việt',
+  w: 'Từ', ipa: 'Phiên âm', def: 'Định nghĩa tiếng Anh', ex: 'Câu ví dụ (mỗi dòng 1 câu)', goal: 'Mục tiêu', hook: 'Câu móc nhớ', prompt: 'Đề', en: 'Câu tiếng Anh', mark: 'Câu có đánh dấu (HTML)', tag: 'Nhãn', d: 'Hội thoại',
+  same: 'Cùng nghĩa? (true/false)', lines: 'Các dòng (mỗi dòng 1 câu)', time: 'Thời gian (giây)', desc: 'Mô tả', pair: 'Cặp từ', distinction: 'Phân biệt', example: 'Ví dụ', type: 'Loại', say: 'Tooez nói', ok: 'Khi làm đúng', no: 'Khi làm sai', fast: 'Mẹo nhanh', limit: 'Khi nào không đúng', try: 'Thử ngay', g: 'Nhóm / bảng', rows: 'Các dòng bảng', html: 'Nội dung (HTML)', name: 'Tên' };
+const titleOf = o => { if (o == null) return ''; if (typeof o !== 'object') return String(o); for (const k of ['q', 'prompt', 'w', 'h', 't', 'title', 'en', 'pair', 'a', 'name', 'id']) if (typeof o[k] === 'string' && o[k]) return o[k].replace(/<[^>]+>/g, '').slice(0, 110); if (o.q && typeof o.q === 'object') return titleOf(o.q); return JSON.stringify(o).slice(0, 100); };
+const isLines = v => Array.isArray(v) && v.length && v.every(x => x && typeof x === 'object' && !Array.isArray(x) && 's' in x && 't' in x && Object.keys(x).length <= 3);
+const isStrArr = v => Array.isArray(v) && v.every(x => typeof x === 'string');
+// vẽ các ô nhập theo kiểu dữ liệu; object lồng nhau (vd. câu hỏi kiểm tra trong thẻ) được mở ra thành ô con
+function fieldsHtml(o, pre = '', depth = 0) {
+  return Object.keys(o).filter(k => typeof o[k] !== 'function' && k[0] !== '_' && !(k === 'id' && !pre) && !(!pre && ['cards', 'topics', 'items', 'extra', 'units', 'skills', 'voc', 'lib', 'core'].includes(k) && typeof o[k] === 'object')).map(k => {
+    const v = o[k], key = pre + k, lab = `${LBL[k] || k}${pre ? ` <span class="faint">(${esc(pre.slice(0, -1))})</span>` : ''}`;
+    if (typeof v === 'string') return `<div class="field"><label>${lab}</label>${v.length > 70 || /[<\n]/.test(v) ? `<textarea class="inp" data-f="${key}" data-t="s" style="min-height:${v.length > 300 ? 180 : 90}px">${esc(v)}</textarea>` : `<input class="inp" data-f="${key}" data-t="s" value="${esc(v)}">`}</div>`;
+    if (typeof v === 'number') return `<div class="field"><label>${(k === 'a' || k === 'answer') && Array.isArray(o.o || o.opts || o.options) ? 'Đáp án đúng: số thứ tự lựa chọn (0 = dòng đầu tiên, 1 = dòng thứ hai…)' : lab}</label><input class="inp" type="number" data-f="${key}" data-t="n" value="${v}" style="max-width:160px"></div>`;
+    if (typeof v === 'boolean') return `<label class="row small field" style="gap:8px"><input type="checkbox" data-f="${key}" data-t="b" ${v ? 'checked' : ''}> ${lab}</label>`;
+    if (isLines(v)) return `<div class="field"><label>${lab} - mỗi dòng "W: câu"</label><textarea class="inp mono" data-f="${key}" data-t="l" style="min-height:120px">${esc(toLines(v))}</textarea></div>`;
+    if (isStrArr(v)) return `<div class="field"><label>${lab}${LBL[k] && /mỗi dòng/.test(LBL[k]) ? '' : ' <span class="faint">- mỗi dòng 1 mục</span>'}</label><textarea class="inp" data-f="${key}" data-t="a" style="min-height:${Math.min(220, 40 + v.length * 26)}px">${esc(v.join('\n'))}</textarea></div>`;
+    if (v && typeof v === 'object' && !Array.isArray(v) && depth < 2) return `<div class="sd-sub">${fieldsHtml(v, key + '.', depth + 1)}</div>`;
+    return `<div class="field"><label>${lab} <span class="faint">- dạng JSON, giữ đúng dấu ngoặc và dấu phẩy</span></label><textarea class="inp mono" data-f="${key}" data-t="j" style="min-height:120px">${esc(JSON.stringify(v, null, 1))}</textarea></div>`;
+  }).join('');
+}
+function readFields(root, base) {
+  const out = {};   // chỉ lưu các trường có trên form (mảng con như cards / items sửa ở trang riêng)
+  for (const el of $$('[data-f]', root)) {
+    const path = el.dataset.f.split('.'), t = el.dataset.t; let v;
+    if (t === 's') v = el.value; else if (t === 'n') v = +el.value; else if (t === 'b') v = el.checked;
+    else if (t === 'l') v = fromLines(el.value); else if (t === 'a') v = el.value.split('\n').map(x => x.trim()).filter(Boolean);
+    else { try { v = JSON.parse(el.value); } catch (e) { throw new Error(`Ô "${el.dataset.f}" sai định dạng JSON`); } }
+    if (path.length > 1 && !out[path[0]]) out[path[0]] = JSON.parse(JSON.stringify(base[path[0]]));
+    let o = out; path.slice(0, -1).forEach(k => { o = o[k]; }); o[path[path.length - 1]] = v;
+  }
+  delete out.id; return out;
+}
+// form sửa một mục bất kỳ: path = "TÊN|đường.dẫn"
+function objForm(main, path, back) {
+  const { o } = R(path);
+  if (!o || typeof o !== 'object') { main.innerHTML = '<p class="muted">Không tìm thấy mục này (có thể đã bị ẩn).</p>'; return; }
+  const up = back || (/\.\d+$|\.#[^.]+$/.test(path) ? '#/soan/arr/' + enc(path.replace(/\.(\d+|#[^.]+)$/, '')) : null);
+  const ed = CT().rows().find(r => r.kind === 'obj' && r.id === path);
+  main.innerHTML = `${up ? `<a href="${up}" class="small">${icon('back')} Danh sách</a>` : ''}
+    <div class="row" style="margin:10px 0;gap:8px;flex-wrap:wrap"><span class="pill mono">${esc(path)}</span>${ed ? '<span class="pill gold">đã sửa</span>' : ''}</div>
+    <div class="card sd-form" style="max-width:860px">${fieldsHtml(o)}
+      <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn pri" id="o-save">Lưu</button>${ed ? '<button class="btn" id="o-rev">Về bản gốc</button>' : ''}${/\.(\d+|#[^.]+)$/.test(path) ? '<button class="btn ghost" id="o-hide">Ẩn mục này</button>' : ''}<span class="small" id="o-msg"></span></div></div>`;
+  const msg = (t, ok) => { const el = $('#o-msg', main); el.textContent = t; el.style.color = ok ? 'var(--sage)' : 'var(--red)'; };
+  $('#o-save', main).onclick = async () => {
+    let d; try { d = readFields(main, o); } catch (e) { return msg(e.message); }
+    try { msg('Đang lưu…', true); await save('obj', path, d); msg('Đã lưu.', true); X.toast('Đã lưu'); } catch (e) { msg(errText(e)); }
+  };
+  const rv = $('#o-rev', main); if (rv) rv.onclick = async () => { if (!confirm('Bỏ chỗ đã sửa, quay về bản gốc?')) return; try { await unsave('obj', path); location.reload(); } catch (e) { msg(errText(e)); } };
+  const hd = $('#o-hide', main); if (hd) hd.onclick = async () => { if (!confirm('Ẩn mục này khỏi bài luyện? (Hiện lại được ở mục "Đã ẩn" của danh sách)')) return; try { await save('obj', path, { _hidden: 1 }); X.toast('Đã ẩn'); location.hash = up || '#/soan'; } catch (e) { msg(errText(e)); } };
+}
+// danh sách các mục trong một mảng + thêm mục mới + mục đã ẩn
+function arrPage(main, path, head, back) {
+  const { o } = R(path);
+  if (!Array.isArray(o)) { main.innerHTML = '<p class="muted">Không tìm thấy danh sách này.</p>'; return; }
+  const key = (x, i) => x && x.id ? '#' + x.id : String(CT().origIndex(o, i));
+  const hidden = CT().rows().filter(r => r.kind === 'obj' && r.data && r.data._hidden && r.id.replace(/\.(\d+|#[^.]+)$/, '') === path);
+  main.innerHTML = `${back ? `<a href="${back}" class="small">${icon('back')} Quay lại</a>` : ''}${head || ''}
+    <div class="row" style="gap:10px;margin:10px 0"><span class="small muted">${o.length} mục</span><span class="grow"></span>${o.length && typeof o[0] === 'object' ? `<button class="btn pri sm" id="a-add">${icon('plus')} Thêm mục</button>` : ''}</div>
+    <div class="sd-list">${o.map((x, i) => `<a class="sd-row" href="#/soan/obj/${enc(path + '.' + key(x, i))}"><b class="mono">${i + 1}</b><span class="grow">${esc(titleOf(x))}</span>${CT().rows().some(r => r.id === path + '.' + key(x, i)) ? '<span class="pill gold">đã sửa</span>' : ''}${x && x._adm ? '<span class="pill syn">mới</span>' : ''}</a>`).join('')}</div>
+    ${hidden.length ? `<div class="sec"><div class="h3" style="margin-bottom:6px">Đã ẩn</div>${hidden.map(r => `<div class="sd-row off"><span class="grow">${esc(titleOf(CT().orig('obj:' + r.id) || r.id))}</span><button class="btn sm" data-un="${esc(r.id)}">Hiện lại</button></div>`).join('')}</div>` : ''}`;
+  $$('[data-un]', main).forEach(b => b.onclick = async () => { try { await unsave('obj', b.dataset.un); location.reload(); } catch (e) { X.toast(esc(errText(e))); } });
+  const add = $('#a-add', main); if (add) add.onclick = async () => {
+    const blank = v => typeof v === 'string' ? '' : typeof v === 'number' ? 0 : typeof v === 'boolean' ? false : Array.isArray(v) ? (isStrArr(v) ? v.map(() => '') : isLines(v) ? [{ s: 'W', t: '' }] : JSON.parse(JSON.stringify(v))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, blank(x)])) : v;
+    const tpl = blank(JSON.parse(JSON.stringify(o[o.length - 1], (k, v) => typeof v === 'function' ? undefined : v)));
+    if (o[0] && o[0].id) tpl.id = 'adm' + Date.now().toString(36);
+    tpl._adm = 'a' + Date.now().toString(36);
+    const prev = CT().rows().find(r => r.kind === 'add' && r.id === path);
+    try { await save('add', path, { list: [...((prev && prev.data.list) || []), tpl] }); const i = o.findIndex(x => x && x._adm === tpl._adm); X.go('#/soan/obj/' + enc(path + '.' + key(o[i], i))); } catch (e) { X.toast(esc(errText(e)), 4000); }
+  };
+}
+const card = (href, t, sub) => `<a class="sd-row" href="${href}"><span class="grow"><b>${esc(t)}</b>${sub ? ` <span class="small muted">${esc(sub)}</span>` : ''}</span>${icon('arrow')}</a>`;
+function pathTab(main, arg) {
+  const P = window.PATH;
+  if (!arg) { main.innerHTML = `<p class="small muted">Chọn Part → bài → sửa thẻ kiến thức, câu kiểm tra trong thẻ, hoặc câu luyện / kiểm tra cuối bài.</p><div class="sd-list">${Object.entries(P).map(([k, p]) => card('#/soan/lo/' + k, p.title, `${p.units.length} bài`)).join('')}</div>`; return; }
+  const [pk, uid] = arg.split('~'), part = P[pk];
+  if (!uid) { main.innerHTML = `<a href="#/soan/lo" class="small">${icon('back')} Lộ trình</a><h2 class="h2" style="margin:8px 0">${esc(part.title)}</h2><div class="sd-list">${part.units.map((u, i) => card(`#/soan/lo/${pk}~${u.id}`, `${i + 1}. ${u.t}`, u.vi)).join('')}</div>`; return; }
+  const u = part.units.find(x => x.id === uid); if (!u) { main.innerHTML = '<p class="muted">Không thấy bài này.</p>'; return; }
+  const drill = X.unitDrillOf && u.drill ? X.unitDrillOf(u) : [];
+  main.innerHTML = `<a href="#/soan/lo/${pk}" class="small">${icon('back')} ${esc(part.title)}</a><h2 class="h2" style="margin:8px 0">${esc(u.t)}</h2>
+    <div class="sd-list">${card('#/soan/obj/' + enc(`PATH|${pk}.units.#${uid}`), 'Tên bài, mục tiêu', 'tiêu đề, nghĩa, “Sau bài này bạn sẽ…”')}
+    ${u.cards ? card('#/soan/arr/' + enc(`PATH|${pk}.units.#${uid}.cards`), 'Thẻ kiến thức + câu hỏi trong thẻ', `${u.cards.length} thẻ`) : ''}
+    ${u.deck ? card('#/soan/the/' + enc((pk === 'p1' ? 'P1LIB' : 'LIBDECK|' + pk) + '~' + u.deck), 'Thẻ học của bài (Thư viện)', u.deck) : ''}</div>
+    <div class="sec"><div class="h3">Câu luyện tập và kiểm tra của bài (${drill.length} câu trong kho)</div><div class="small muted" style="margin:4px 0 8px">Trạm Luyện và Kiểm tra bốc ngẫu nhiên từ các câu này.</div>
+    <div class="sd-list">${drill.slice(0, 300).map(it => `<a class="sd-row ${it._hidden ? 'off' : ''}" href="#/soan/cau/${enc(it.id)}"><span class="pill">Part ${it.part}</span><span class="grow">${esc(String(it.prompt || '').slice(0, 110))}</span>${edited(it.id) ? '<span class="pill gold">đã sửa</span>' : ''}</a>`).join('')}</div></div>`;
+}
+function labTab(main, id) {
+  if (!id) { main.innerHTML = `<p class="small muted">Mọi bài trong Lab phản xạ. Bấm vào bài để sửa từng câu.</p><div class="sd-list">${Object.entries(X.LABS).map(([k, l]) => card('#/soan/lab/' + enc(k), l.title, `${l.part ? 'Part ' + l.part + ' - ' : ''}${l.kind === 'bank' ? 'câu trong kho' : l.kind === 'pic' ? 'ảnh Part 1' : (l.items || []).length + (l.extra || []).length + ' mục'}`)).join('')}</div>`; return; }
+  const L = X.LABS[id];
+  if (L.kind === 'pic') { main.innerHTML = `<a href="#/soan/lab" class="small">${icon('back')} Lab phản xạ</a><h2 class="h2" style="margin:8px 0">${esc(L.title)}</h2><p>Bài này tự tạo câu từ ảnh Part 1. Sửa ảnh, câu tả đúng và câu nhiễu ở <a href="#/soan/anh"><b>Ảnh Part 1</b></a>.</p>`; return; }
+  if (L.kind === 'bank') { const its = X.BANK.filter(i => Object.entries(L.filter || {}).every(([k, v]) => i[k] === v)).concat((window.BANK || []).filter(i => i._hidden && Object.entries(L.filter || {}).every(([k, v]) => i[k] === v)));
+    main.innerHTML = `<a href="#/soan/lab" class="small">${icon('back')} Lab phản xạ</a><h2 class="h2" style="margin:8px 0">${esc(L.title)}</h2><div class="sd-list">${its.map(it => `<a class="sd-row ${it._hidden ? 'off' : ''}" href="#/soan/cau/${enc(it.id)}"><span class="grow">${esc(String(it.prompt || '').slice(0, 110))} <span class="faint small">${esc((it.options || [])[it.answer] || '')}</span></span>${it._hidden ? '<span class="pill red">đã ẩn</span>' : edited(it.id) ? '<span class="pill gold">đã sửa</span>' : ''}</a>`).join('')}</div>`; return; }
+  const head = `<h2 class="h2" style="margin:8px 0">${esc(L.title)}</h2><div class="sd-list" style="margin-bottom:8px">${card('#/soan/obj/' + enc('LABS|' + id), 'Tên bài, mô tả', L.desc || '')}${L.extra ? card('#/soan/arr/' + enc(`LABS|${id}.extra`), 'Mục thêm (extra)', L.extra.length + ' mục') : ''}</div><div class="h3">Các câu</div>`;
+  arrPage(main, `LABS|${id}.items`, head, '#/soan/lab');
+}
+function deckTab(main, arg) {
+  if (!arg) { const L = window.LIBDECK || {};
+    main.innerHTML = `<p class="small muted">Thẻ học trong Thư viện (trạm Học của Lộ trình dùng chung các thẻ này).</p><div class="sd-list">${card('#/soan/the/P1LIB', 'Part 1', (window.P1LIB.topics || []).length + ' chủ đề')}${Object.keys(L).map(k => card('#/soan/the/' + enc('LIBDECK|' + k), 'Part ' + k.slice(1).replace('34', '3-4'), L[k].topics.length + ' chủ đề')).join('')}</div>`; return; }
+  const [root, tid] = arg.split('~'), D = R(root).o;
+  if (!tid) { main.innerHTML = `<a href="#/soan/the" class="small">${icon('back')} Thẻ học</a><div class="sd-list" style="margin-top:10px">${D.core ? card('#/soan/obj/' + enc(root + (root.includes('|') ? '.' : '|') + 'core'), 'Bài mở đầu (cách nghĩ + quy trình)', '') : ''}${D.topics.map(t => card('#/soan/the/' + enc(root + '~' + t.id), t.t, (t.cards || []).length + ' thẻ')).join('')}</div>`; return; }
+  const base = root + (root.includes('|') ? '.' : '|') + 'topics.#' + tid;
+  arrPage(main, base + '.cards', `<div class="sd-list" style="margin:8px 0">${card('#/soan/obj/' + enc(base), 'Tên chủ đề, câu móc nhớ', '')}</div><div class="h3">Các thẻ</div>`, '#/soan/the/' + enc(root));
+}
+function vocabTab(main, id) {
+  if (id) { const w = X.wordById[id]; objForm(main, 'VOCAB|#' + id, '#/soan/tu');
+    const cz = (window.CLOZE || {})[id];
+    if (Array.isArray(cz)) { main.insertAdjacentHTML('beforeend', `<div class="card sec" style="max-width:860px"><div class="field"><label>Phương án nhiễu cho dạng "Điền vào câu" (mỗi dòng 1 từ)</label><textarea class="inp" id="cz">${esc(cz.join('\n'))}</textarea></div><button class="btn" id="cz-save">Lưu phương án nhiễu</button></div>`);
+      $('#cz-save', main).onclick = async () => { try { await save('obj', 'CLOZE', Object.assign({}, (CT().rows().find(r => r.kind === 'obj' && r.id === 'CLOZE') || {}).data || {}, { [id]: $('#cz', main).value.split('\n').map(x => x.trim()).filter(Boolean) })); X.toast('Đã lưu'); } catch (e) { X.toast(esc(errText(e))); } }; }
+    return; }
+  main.innerHTML = `<input class="inp" id="vq" placeholder="Gõ từ tiếng Anh hoặc nghĩa…" style="max-width:420px"><div class="sd-list" id="vr" style="margin-top:12px"></div>`;
+  const run = q => { const r = q.length < 2 ? [] : X.VOCAB.filter(w => (w.w + ' ' + (w.vi || '')).toLowerCase().includes(q)).slice(0, 80);
+    $('#vr', main).innerHTML = q.length < 2 ? `<div class="small muted">${X.VOCAB.length} từ trong kho. Gõ ít nhất 2 ký tự.</div>` : r.map(w => `<a class="sd-row" href="#/soan/tu/${enc(w.id)}"><b>${esc(w.w)}</b><span class="grow small muted">${esc(w.vi || '')}</span>${edited('VOCAB|#' + w.id) ? '<span class="pill gold">đã sửa</span>' : ''}</a>`).join('') || '<div class="small muted">Không thấy từ nào.</div>'; };
+  run(''); $('#vq', main).oninput = ev => run(ev.target.value.trim().toLowerCase());
+}
+function otherTab(main) {
+  main.innerHTML = `<div class="sd-list">${card('#/soan/arr/' + enc('CONF'), 'Cặp từ dễ nhầm', (window.CONF || []).length + ' cặp')}
+    ${(window.AHA || []).map((g, i) => card('#/soan/arr/' + enc(`AHA|${i}.items`), 'Aha! - ' + g.g, (g.items || []).length + ' thẻ')).join('')}
+    ${(window.NGOP_SETS || []).map((s, i) => card('#/soan/obj/' + enc(`NGOP_SETS|${i}`), 'Bị ngộp Part 7 - ' + s.title, 'đoạn văn, câu hỏi')).join('')}
+    ${card('#/soan/arr/' + enc('RICH_LIST'), 'Từ học sâu 13 bước', 'xem trong Từ vựng')}</div>`;
+  main.querySelector('[href$="RICH_LIST"]').remove();
+}
+
+// dữ liệu nạp muộn (Lộ trình dựng lại, Bị ngộp…): áp dụng nốt các bản sửa chưa áp được lúc đầu
+CT() && CT().apply(CT().rows());
 // mở web: tải bản sửa mới nhất ở nền, có thay đổi thì vẽ lại trang đang xem
 setTimeout(() => CT() && CT().refresh().then(ch => { if (ch && !X.hereKey().startsWith('/soan')) X.render(); }), 300);
 })();

@@ -193,7 +193,7 @@ X.renderSide = (...a) => {
   prevSide && prevSide(...a);
   const brand = document.querySelector('#side .brand');
   if (brand) brand.insertAdjacentHTML('afterend', user
-    ? `<a class="acct-side on" href="#/settings" title="Tài khoản">${avatar()}<span class="grow"><b>${esc((user.email || '').split('@')[0])}</b><small><i class="dot ${st.state === 'err' ? 'bad' : ''}"></i>${st.state === 'err' ? 'Chưa lưu được' : st.state === 'sync' ? 'Đang lưu…' : 'Tiến độ đã lưu'}</small></span></a>`
+    ? (admin ? `<a class="acct-side soan-link" href="#/soan">✏️ <b>Soạn đề</b></a>` : '') + `<a class="acct-side on" href="#/settings" title="Tài khoản">${avatar()}<span class="grow"><b>${esc((user.email || '').split('@')[0])}</b><small><i class="dot ${st.state === 'err' ? 'bad' : ''}"></i>${st.state === 'err' ? 'Chưa lưu được' : st.state === 'sync' ? 'Đang lưu…' : 'Tiến độ đã lưu'}</small></span></a>`
     : hadSession && !ready ? `<div class="acct-side"><small class="muted">Đang đăng nhập…</small></div>`
     : `<div class="acct-side off">${dd('Đăng nhập để lưu tiến độ', 'full')}</div>`);
   const side = document.querySelector('#side'); if (side) bindCard(side);
@@ -206,7 +206,10 @@ X.renderSide = (...a) => {
 };
 
 document.addEventListener('click', e => { document.querySelectorAll('details.lg-dd[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
-X.cloud = { on: true, user: () => user, google, login, signOut, syncNow };
+let admin = false;
+// tài khoản có trong bảng public.admins thì được vào trang Soạn đề
+const checkAdmin = async () => { admin = false; if (!user) return; try { const { data } = await sb.rpc('is_admin'); admin = data === true; } catch (e) { admin = false; } if (admin) { X.renderSide && X.renderSide(); if (/^\/soan/.test(X.hereKey())) X.render(); } };
+X.cloud = { on: true, user: () => user, google, login, signOut, syncNow, sb: () => sb, admin: () => admin, ready: () => ready };
 
 /* ---------- khởi động ---------- */
 const lib = () => new Promise((res, rej) => { if (window.supabase && window.supabase.createClient) return res();
@@ -220,7 +223,7 @@ const lib = () => new Promise((res, rej) => { if (window.supabase && window.supa
   sb.auth.onAuthStateChange((ev, session) => {
     if (ev === 'PASSWORD_RECOVERY') { recovery = true; setTimeout(newPassword, 300); }
     const u = session ? session.user : null;
-    if ((u && u.id) !== (user && user.id)) { user = u; if (ready) { if (user) { setTimeout(firstSync, 0); X.toast('Đã đăng nhập: ' + esc(user.email || '')); } else { setSt('off'); refresh(); } } }
+    if ((u && u.id) !== (user && user.id)) { user = u; if (ready) { if (user) { setTimeout(firstSync, 0); setTimeout(checkAdmin, 0); X.toast('Đã đăng nhập: ' + esc(user.email || '')); } else { admin = false; setSt('off'); refresh(); } } }
   });
   const { data } = await sb.auth.getSession();
   user = data.session ? data.session.user : null;
@@ -232,7 +235,7 @@ const lib = () => new Promise((res, rej) => { if (window.supabase && window.supa
     if (!recovery) X.render();
   }
   ready = true;
-  if (user) firstSync(); else { refresh(); paintCards(); }
+  if (user) { firstSync(); checkAdmin(); } else { refresh(); paintCards(); }
   if (!user && hadSession && X.hereKey() === '/today') X.render();
   setInterval(() => syncNow(false), 20000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') syncNow(false); else syncNow(true); });

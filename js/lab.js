@@ -87,6 +87,13 @@ const FOLDABLE = /\b(papers?|documents?|map|newspaper|towels?|clothes|shirts?|na
 const SOUND = [[/\bholding\b/, 'folding', FOLDABLE], [/\bfolding\b/, 'holding'], [/\bwashing\b/, 'watching'], [/\bwatching\b/, 'washing', WASHABLE], [/\bpainting\b/, 'pointing at'], [/\bpointing at\b/, 'painting', PAINTABLE]];
 // đổi vị trí: "on/under" chỉ với vật có mặt trên lẫn gầm (bàn, kệ…), tránh "under the beach"
 const SURF = '(?:a |an |the |some )?(?:\\w+ )?(?:table|tables|desk|desks|shelf|shelves|counter|bench|chair|chairs|cart|bed|sofa|couch)\\b';
+// cặp nghĩa ngược nhau: tranh tả trạng thái thì đổi sang trạng thái ngược lại là câu nhiễu cùng cảnh, chắc chắn sai
+const ANT = [[/\bare seated\b/, 'are standing'], [/\bis seated\b/, 'is standing'], [/\bare sitting\b/, 'are standing'], [/\bis sitting\b/, 'is standing'], [/\bis lying\b/, 'is standing'], [/\bis walking\b/, 'is running'], [/\bare walking\b/, 'are running'],
+  [/\bempty\b/, 'full'], [/\bunoccupied\b/, 'occupied'], [/\bvacant\b/, 'occupied'], [/\boccupied\b/, 'empty'], [/\ba crowded\b/, 'an empty'], [/\bcrowded\b/, 'empty'], [/\bdeserted\b/, 'crowded'],
+  [/\bneat and tidy\b/, 'cluttered with papers'], [/\bcluttered with\b/, 'cleared of'], [/\bpropped open\b/, 'closed'], [/\b(is|are) (?:full of|filled with) [^.]+/, '$1 empty'],
+  [/\bhave been stacked\b/, 'have been scattered'], [/\bare stacked\b/, 'are scattered'], [/\bhave been lit\b/, 'have been blown out'], [/\bare scattered\b/, 'are stacked in a pile'], [/\bin rows\b/, 'in a circle'], [/\bare lined up\b/, 'are piled up'],
+  [/\bhas been set up\b/, 'is being taken down'], [/\bhave been set up\b/, 'are being taken down'], [/\b(car|truck|van|vehicle)s? (is|are) parked\b/, (m, a, b) => m.replace(b + ' parked', b + ' being towed')], [/\bare docked\b/, 'are sailing away'], [/\bis floating\b/, 'is being pulled out of the water'], [/\bare floating\b/, 'are being pulled out of the water'],
+  [/\bis hanging (?=(on|from|over|above|in)\b)/, 'is being taken down '], [/\bare hanging (?=(on|from|over|above|in)\b)/, 'are being taken down '], [/\bis illuminated\b/, 'is being demolished'], [/\bare illuminated\b/, 'are being demolished'], [/\bin bloom\b/, 'being planted'], [/\bhave been wrapped\b/, 'are being unwrapped'], [/\bhas been wrapped\b/, 'is being unwrapped']];
 const PSWAP = [[' on top of ', ' underneath '], [' in front of ', ' behind '], [' behind ', ' in front of '], [' above ', ' below '], [' below ', ' above '],
   [' into ', ' out of '], [' out of ', ' into '], [' toward ', ' away from '], [' towards ', ' away from '], [' inside ', ' outside '], [' outside ', ' inside '], [' upstairs', ' downstairs'], [' up ', ' down '], [' down ', ' up '],
   [' under ', ' on ', SURF], [' on ', ' under ', SURF]];
@@ -97,6 +104,7 @@ function sceneTraps(w, ex) {
   const m = ex.match(/^(.+?) (is|are) (\w+ing)\b/), person = isPersonSubj(ex) && m;
   const subj = person ? m[1] : 'Someone', be = person ? m[2] : 'is', none = !person && noPerson(w);
   const used = new Set(); const curV = m ? stemOf(m[3]) : '';
+  ((((window.IMGEX || {})[X.imgSlug(w)]) || {}).traps || []).filter(Boolean).forEach(t => out.push({ t, why: 'câu nhiễu soạn tay' }));   // câu nhiễu admin soạn trên trang Soạn đề, ưu tiên dùng trước
   const posed = /\b(sitting|seated|standing|lying|kneeling|crouching|leaning)\b/.test(low);
   const SOLO = /^(phone|laptop|computer|cup|bag|suitcase|menu|book|umbrella|camera|microphone|map|folder|bicycle|bike|lamp)$/;
   if (person || none) shuffle(NV.slice()).forEach(([n, v, own]) => {
@@ -111,6 +119,12 @@ function sceneTraps(w, ex) {
   for (const [a, b, need] of PSWAP) { if (!low.includes(a)) continue; if (/^ (up|down) $/.test(a) && !/\b(walking|climbing|going|heading|running|coming|riding|looking|carrying \w+) (up|down) (?:a |an |the |some )?(?:\w+ )?(stairs|staircase|steps|ladder|escalator|hill|slope|ramp)\b/i.test(ex)) continue; if (/^ (into|out of) $/.test(a) && !/\b(walking|coming|going|getting|moving|running|stepping|poured|pouring|driving|heading|carrying|climbing)\b/i.test(ex)) continue; if (posed && /^ (in front of|behind) $/.test(a) && /\b(desk|computer|laptop|monitor|screen|counter|table)\b/i.test(ex)) continue; if (need && (posed || !new RegExp(a.replace(/ /g, '\\s') + need.replace(/^\(\?:/, '(?:'), 'i').test(ex))) continue;
     const t = ex.replace(new RegExp(a.replace(/ /g, '\\s'), 'i'), b); if (t !== ex) { out.push({ t, why: 'sai vị trí' }); break; } }
   if (person) for (const [re, v, ok] of SOUND) if (re.test(ex) && (!ok || ok.test(ex.split(re)[1] || ''))) { out.push({ t: ex.replace(re, v).replace(/pointing at at /, 'pointing at '), why: 'gần âm' }); break; }
+  // bẫy cùng cảnh cho tranh tả trạng thái: đảo nghĩa (empty ↔ full…), trạng thái → hành động (wearing → putting on / taking off), đổi số lượng
+  for (const [re, to] of ANT) { if (out.length >= 3) break; if (re.test(ex)) { const t = ex.replace(re, to); if (t !== ex && !out.some(o => o.t === t)) out.push({ t, why: 'ngược với tranh' }); } }
+  const wm = ex.match(/^(.+?) (is|are) (wearing|dressed in) (.+)$/);
+  if (wm && out.length < 3) out.push({ t: wm[3] === 'dressed in' ? `${wm[1]} ${wm[2]} changing ${wm[2] === 'are' ? 'their' : /\b(woman|girl|lady|mother|daughter)\b/i.test(wm[1]) ? 'her' : /\b(man|boy|father|son)\b/i.test(wm[1]) ? 'his' : 'their'} clothes.` : `${wm[1]} ${wm[2]} ${Math.random() < .5 ? 'taking off' : 'putting on'} ${wm[4]}`, why: 'đang mặc sẵn, không phải đang thay / cởi / mặc vào' });
+  const nm = ex.match(/^(Two|Three|Four) /); if (nm && out.length < 3) out.push({ t: ex.replace(/^(Two|Three|Four) /, { Two: 'Three ', Three: 'Two ', Four: 'Two ' }[nm[1]]), why: 'sai số lượng' });
+  out.forEach(o => { o.t = o.t.replace(/\b([Aa]) (?=[aeio])/g, '$1n '); });   // a empty → an empty
   return out;
 }
 // "Nhìn tranh, chọn từ": bỏ nhóm Người và những từ một tấm ảnh không phân biệt được (gần nghĩa, chung chung, hành động khó thấy trong ảnh tĩnh)
@@ -152,6 +166,7 @@ const abstractPic = w => /^(adj|adv|prep)/.test(w.pos || '') || w.topic === 'V�
 X.picRounds = L => picRounds(L);
 const sayAll = (op, ok) => op.map((t, k) => `<div${k === ok ? ' style="font-weight:700"' : ' class="muted"'}>(${'ABCD'[k]}) ${esc(t.t)}${t.why ? ` <span class="pill ${k === ok ? 'sage' : 'red'}" style="font-weight:600">${t.why}</span>` : ''}</div>`).join('');
 X._dev = { picRounds: L => picRounds(L), rounds: L => rounds(L), passiveOf: e => passiveOf(e), beingTrap: (w, e) => beingTrap(w, e) };   // chỉ dùng cho công cụ tạo audio
+const asp = { n: Math.random() < .5 ? 0 : 1 };
 function picRounds(L) {
   let ws = picWords(L).filter(w => X.imgNow(w)); const pool = X.VOCAB.filter(X.hasImgSlot);
   if (L.mode === 'word' && L.cat) ws = ws.filter(w => w.topic === L.cat);
@@ -161,8 +176,11 @@ function picRounds(L) {
     const after = `<b>${esc(w.w)}</b> ${w.ipa ? `<span class="faint">${esc(w.ipa)}</span> ` : ''}- ${esc(w.vi)}${ex ? `<div style="margin-top:4px"><i>${esc(ex)}</i></div>` : ''}`;
     if (L.mode === 'word' && ex && abstractPic(w)) {
       // từ chỉ vị trí / trạng thái / tính chất: một mình từ đó không tả được ảnh → chọn câu tả đúng ảnh
-      const same = pool.filter(x => x.ex && x.ex[0] && x.ex[0] !== ex && abstractPic(x));
-      let ds = picDistract(w, same, 3, 'ex').map(x => x.ex[0]);
+      // ưu tiên câu nhiễu cùng cảnh (sai hành động, sai vị trí, gần âm, bẫy is being) như đề thật; thiếu mới lấy câu của tranh khác
+      const near = [...sceneTraps(w, ex).map(t => t.t), beingTrap(w, ex), isPersonSubj(ex) && sameSubjTrap(w, ex, pool, scene)].filter(t => t && t !== ex && t !== passiveOf(ex));
+      let ds = [...new Set(shuffle(near))].slice(0, 3);
+      const same = pool.filter(x => x.ex && x.ex[0] && x.ex[0] !== ex && abstractPic(x) && !ds.includes(x.ex[0]));
+      if (ds.length < 3) ds = ds.concat(picDistract(w, same, 3 - ds.length, 'ex').map(x => x.ex[0]));
       if (ds.length < 3) ds = ds.concat(picDistract(w, pool.filter(x => x.ex && x.ex[0] && x.ex[0] !== ex && !ds.includes(x.ex[0])), 3 - ds.length, 'ex').map(x => x.ex[0]));
       const op = shuffle([ex, ...ds]);
       return out.push({ key: w.id, q: picImg(w) + '<div class="small muted" style="text-align:center">Từ vị trí / trạng thái phải đặt trong câu mới tả được ảnh. Chọn câu tả đúng.</div>', opts: op, a: op.indexOf(ex), after, say: ex, time: 9 });
@@ -177,10 +195,11 @@ function picRounds(L) {
       const cand = [{ t: ex, ok: true, why: 'Đúng: tả đúng điều thấy trong tranh.' }];
       if (pas) cand.push({ t: pas, ok: true, why: 'Đúng: câu bị động “is being + V3” vẫn đúng vì trong tranh CÓ người đang làm.' });
       if (bt) cand.push({ t: bt, ok: false, why: 'Sai: tranh không có ai đang làm, nên không thể “is/are being + V3”. Vật chỉ ở trạng thái.' });
-      if (sw) cand.push({ t: sw, ok: false, why: isPersonSubj(ex) ? 'Sai: câu nghe rất tự nhiên nhưng người trong tranh không làm việc này.' : 'Sai: câu tả một cảnh khác, không phải cảnh trong tranh.' });
+      sceneTraps(w, ex).forEach(t => cand.push({ t: t.t, ok: false, why: t.why === 'sai vị trí' ? 'Sai: đúng đồ vật trong tranh nhưng sai vị trí.' : t.why === 'gần âm' ? 'Sai: từ nghe gần giống nhưng không phải điều thấy trong tranh.' : 'Sai: có thứ này trong tranh nhưng sai hành động / trạng thái.' }));
+      if (sw && isPersonSubj(ex) && cand.filter(c => !c.ok).length < 1) cand.push({ t: sw, ok: false, why: isPersonSubj(ex) ? 'Sai: câu nghe rất tự nhiên nhưng người trong tranh không làm việc này.' : 'Sai: câu tả một cảnh khác, không phải cảnh trong tranh.' });
       if (cand.length < 2) return;
       const T = cand.filter(c => c.ok), F = cand.filter(c => !c.ok);
-      const c = F.length && Math.random() < 0.55 ? F[Math.floor(Math.random() * F.length)] : T[Math.floor(Math.random() * T.length)];
+      const c = F.length && (asp.n++ % 2 === 1) ? F[Math.floor(Math.random() * F.length)] : T[Math.floor(Math.random() * T.length)];   // xen kẽ đúng / sai, tỉ lệ khoảng 50-50
       return out.push({ key: w.id, q: picImg(w) + '<div class="small muted" style="text-align:center">Nghe câu mô tả. Câu này đúng hay sai với tranh?</div>', opts: ['Đúng với tranh', 'Sai với tranh'], a: c.ok ? 0 : 1,
         audio: [{ s: Math.random() < .5 ? 'M' : 'W', t: c.t }], after: `<div>“${esc(c.t)}”</div><div style="margin-top:6px">${c.why}</div>${c.t !== ex ? `<div class="small muted" style="margin-top:6px">Câu gốc: ${esc(ex)}</div>` : ''}` });
     }

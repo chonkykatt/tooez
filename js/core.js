@@ -223,7 +223,7 @@ X.PARTS = [
   { k: 'p7', n: 'Part 7', name: 'Reading Comprehension', vi: 'Đọc hiểu', parts: [7] },
 ];
 X.partOf = n => X.PARTS.find(p => p.parts.includes(+n)) || X.PARTS[0];
-X.BANK = window.BANK || [];
+X.BANK = (window.BANK || []).filter(i => !i._hidden);
 // Part 1 dạng đề thật: chỉ nghe 4 câu (A)-(D), chữ hiện sau khi làm xong
 X.BANK.forEach(i => { if (i.src === 'p1case') { i.ao = 1; i.audio = i.options.map((o, k) => ({ s: 'M', t: `(${'ABCD'[k]}) ${o}` })); } }); X.VOCAB = window.VOCAB || []; X.LABS = window.LABS || {}; X.UNITS = window.UNITS || {};
 // Bài nghe: câu nằm trong audio thì không in sẵn ra, chọn xong mới hiện (và tô từ quan trọng)
@@ -491,6 +491,8 @@ X.render = () => {
   X.go('#/today');
 };
 window.addEventListener('hashchange', X.render);
+// bấm link trỏ đúng trang đang mở (vd. nút ✕ trong bài Lab trỏ về trang giới thiệu cùng địa chỉ): hash không đổi nên trình duyệt không làm gì → tự vẽ lại trang
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="#/"]'); if (!a || e.defaultPrevented || a.target) return; if (a.getAttribute('href') === location.hash) { e.preventDefault(); X.render(); } });
 
 // Part 2: tô từ quan trọng trong câu hỏi (từ để hỏi / trợ động từ đầu câu, "or", câu đuôi, từ nội dung)
 X.hiQ = (text) => {

@@ -18,6 +18,7 @@
   X.imgProbe = w => {
     if (!X.hasImgSlot(w) || X.imgBad(w)) return Promise.resolve(null);
     if (cache[w.id] !== undefined) return Promise.resolve(cache[w.id]);
+    const own = ((window.IMGEX || {})[X.imgSlug(w)] || {}).img; if (own) return Promise.resolve(cache[w.id] = own);   // ảnh tải lên từ trang Soạn đề
     const base = 'img/p1/' + X.imgSlug(w) + '.';
     const p = EXT.reduce((acc, e) => acc.then(u => u || tryLoad(base + e)), Promise.resolve(null)).then(u => (cache[w.id] = u));
     cache[w.id] = p; return p;
@@ -25,7 +26,8 @@
   X.imgNow = w => { const c = w && cache[w.id]; return typeof c === 'string' ? c : null; };   // sync, after probe
   X.imgPrefetch = words => Promise.all(words.map(X.imgProbe));
   // Ảnh có câu mẫu trong data/imgex.js thì chắc chắn có file: đánh dấu sẵn, không cần tải thử
-  X.imgAssume = () => (X.VOCAB || []).forEach(w => { if (cache[w.id] === undefined && X.hasImgSlot(w) && X.imgEx(w)) cache[w.id] = 'img/p1/' + X.imgSlug(w) + '.jpg'; });
+  X.imgAssume = () => (X.VOCAB || []).forEach(w => { if (cache[w.id] === undefined && X.hasImgSlot(w) && X.imgEx(w)) cache[w.id] = X.imgEx(w).img || 'img/p1/' + X.imgSlug(w) + '.jpg'; });
+  X.imgForget = w => { delete cache[w.id]; };
   // <div data-wimg="ID"></div> → ảnh nếu có
   X.imgFill = root => (root || document).querySelectorAll('[data-wimg]').forEach(el => {
     const w = X.wordById[el.dataset.wimg]; if (!w) return;

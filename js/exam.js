@@ -16,7 +16,7 @@ X.examItems = e => {
   if (e.ids) its = e.ids.map(id => X.itemById[id]);
   else if (e.test) its = X.BANK.filter(i => i.test === e.test).sort((a, b) => a.num - b.num);
   else its = e.sets.flatMap(sid => [...X.BANK.filter(i => i.set === sid), ...(window.EXAM_EXTRA || []).filter(i => i.set === sid)].sort((a, b) => (a.pos || 0) - (b.pos || 0)));
-  return its.filter(Boolean).filter(i => !(e.drop || []).includes(i.id));
+  return its.filter(Boolean).filter(i => !i._hidden && !(e.drop || []).includes(i.id));
 };
 const pagesOf = its => { const out = []; its.forEach((it, k) => { const last = out[out.length - 1]; if (it.set && last && last.set === it.set) last.idx.push(k); else out.push({ set: it.set || null, idx: [k] }); }); return out; };
 const docName = it => { const h = [...String(it.passage || '').matchAll(/<h4>([^<]+)<\/h4>/g)].map(m => m[1].trim().toLowerCase());
@@ -94,7 +94,7 @@ function runExam(view, e, items, sv, chain) {
   const optBtns = (k, it, bubbles) => `<div class="${bubbles ? 'ex-bub' : 'opts'}" data-q="${k}">${it.options.map((op, j) => `<button class="${bubbles ? 'bub' : 'opt'} ${st.ans[k] === j ? 'sel' : ''}" data-k="${k}" data-o="${j}"><span class="L">${LETTERS[j]}</span>${bubbles ? '' : `<span>${esc(op)}</span>`}</button>`).join('')}</div>`;
   const confRow = k => `<div class="ex-conf" data-cq="${k}">${[['sure', 'Chắc'], ['unsure', 'Phân vân'], ['guess', 'Lụi']].map(([c, n]) => `<button data-ck="${k}" data-c="${c}" class="${st.conf[k] === c ? 'on' : ''}">${n}</button>`).join('')}</div>`;
   const qBlock = (k, opt = {}) => { const it = items[k];
-    return `<div class="ex-q" id="exq-${k}"><div class="ex-qn"><b>${N(k)}.</b> ${opt.noPrompt ? '<span class="muted">Mark your answer on your answer sheet.</span>' : esc(it.prompt)}</div>${optBtns(k, it, opt.bubbles)}${confRow(k)}</div>`; };
+    return `<div class="ex-q" id="exq-${k}">${e.part !== 1 && it.img ? `<div class="ex-pic"><img src="${esc(it.img)}" alt=""></div>` : ''}<div class="ex-qn"><b>${N(k)}.</b> ${opt.noPrompt ? '<span class="muted">Mark your answer on your answer sheet.</span>' : esc(it.prompt)}</div>${optBtns(k, it, opt.bubbles)}${confRow(k)}</div>`; };
 
   function render() {
     const p = pages[st.pi], its = p.idx.map(k => items[k]), it = its[0], k0 = p.idx[0], k1 = p.idx[p.idx.length - 1];

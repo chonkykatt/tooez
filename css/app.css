@@ -1480,3 +1480,20 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .ft-row input{margin-top:4px;width:18px;height:18px;flex:none;accent-color:var(--syn)}
 .ft-row .ft-tip{display:block;margin-top:2px}
 .ft-row:has(input:checked){border-color:var(--syn);background:var(--syn-soft)}
+/* trang Soạn đề */
+.sd-list{display:grid;gap:6px}
+.sd-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none}
+.sd-row:hover{border-color:var(--syn)}
+.sd-row.off{opacity:.55}
+.sd-row img{width:56px;height:40px;object-fit:cover;border-radius:6px;flex:none}
+.sd-row .grow{min-width:0}
+.sd-form .card{display:grid;gap:4px;align-content:start}
+.sd-img img{max-width:100%;border-radius:12px;display:block}
+.sd-opt{gap:8px;margin:4px 0;flex-wrap:nowrap}.sd-opt .inp{flex:1}
+.sd-pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
+.sd-pic{display:grid;gap:4px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none;font-size:12.5px;position:relative}
+.sd-pic img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px}
+.sd-pic span{color:var(--ink-soft)}
+.sd-pic.off{opacity:.5}
+.sd-pic i.pill{position:absolute;top:12px;right:12px;font-style:normal}
+.acct-side.soan-link{display:flex;align-items:center;gap:8px;border-color:var(--gold);background:var(--gold-soft);color:var(--ink);text-decoration:none;margin-bottom:0}

@@ -120,16 +120,24 @@ function itemForm(main, id) {
         ${P === 1 || it.img !== undefined ? `<div class="field"><label>Ảnh</label><div class="sd-img">${it.img ? `<img src="${esc(it.img)}" alt="" id="f-imgp">` : '<div class="muted small" id="f-imgp">Chưa có ảnh</div>'}</div><input type="file" accept="image/*" id="f-img"><input type="hidden" id="f-imgv" value="${esc(it.img || '')}"></div>`
           : `<div class="field"><label>Ảnh (không bắt buộc)</label><input type="file" accept="image/*" id="f-img"><input type="hidden" id="f-imgv" value=""><div id="f-imgp"></div></div>`}
         ${hasPassage ? `<div class="field"><label>${P === 3 || P === 4 ? 'Bảng / biểu đồ (HTML)' : 'Đoạn văn (HTML)'}${mates.length ? ` <span class="faint">- sửa ở đây là sửa cho cả ${mates.length + 1} câu cùng bộ</span>` : ''}</label><textarea class="inp mono" id="f-pass" style="min-height:200px">${esc(it.passage || '')}</textarea></div>` : ''}
-        ${hasAudio ? `<div class="field"><label>Transcript audio - mỗi dòng "W: câu" (W nữ, M nam, M2 nam 2, S người nói, Q câu hỏi, A đáp án)${mates.length ? ` <span class="faint">- chung cho cả bộ</span>` : ''}</label><textarea class="inp mono" id="f-aud" style="min-height:260px">${esc(toLines(it.audio))}</textarea><div class="small faint">Audio sửa mới sẽ đọc bằng giọng của trình duyệt cho đến khi có file thu sẵn.</div></div>` : ''}
+        ${P <= 2 ? `<div class="field"><label>Audio</label><div class="small muted">Part ${P}: audio đọc đúng ${P === 2 ? 'câu hỏi và ' : ''}các đáp án bên phải, sửa chữ ở đó là audio đổi theo.</div></div>` : ''}
+        ${hasAudio && P > 2 ? `<div class="field"><label>Transcript audio - mỗi dòng "W: câu" (W nữ, M nam, M2 nam 2, S người nói, Q câu hỏi, A đáp án)${mates.length ? ` <span class="faint">- chung cho cả bộ</span>` : ''}</label><textarea class="inp mono" id="f-aud" style="min-height:260px">${esc(toLines(it.audio))}</textarea><div class="small faint">Audio sửa mới sẽ đọc bằng giọng của trình duyệt cho đến khi có file thu sẵn.</div></div>` : ''}
       </div>
       <div class="card">
         <div class="field"><label>Câu hỏi</label><input class="inp" id="f-q" value="${esc(it.prompt || '')}"></div>
         <div class="field"><label>Đáp án - chấm vào đáp án đúng</label>${Array.from({ length: n }, (_, k) => `<div class="row sd-opt"><input type="radio" name="f-ans" value="${k}" ${it.answer === k ? 'checked' : ''}><b>${LETTERS[k]}</b><input class="inp" data-o="${k}" value="${esc((it.options || [])[k] || '')}"></div>`).join('')}</div>
         <div class="field"><label>Dạng câu (skill)</label><input class="inp" id="f-sk" value="${esc(it.skill || '')}"></div>
         <div class="field"><label>Lời chữa (hiện sau khi làm, được dùng thẻ &lt;b&gt;)</label><textarea class="inp" id="f-exp" style="min-height:140px">${esc(it.explain || '')}</textarea></div>
+        <div class="field" id="f-audst"></div>
         <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn pri" id="f-save">Lưu</button>${edited(id) && it.src !== 'admin' ? '<button class="btn" id="f-rev">Về bản gốc</button>' : ''}<button class="btn ghost" id="f-hide">${it._hidden ? 'Hiện lại câu này' : 'Ẩn câu này'}</button><span class="small" id="f-msg"></span></div>
       </div></div>`;
   const msg = (t, ok) => { const el = $('#f-msg', main); el.textContent = t; el.style.color = ok ? 'var(--sage)' : 'var(--red)'; };
+  // từng câu audio của câu hỏi này: đã có file chưa, bấm nghe thử
+  const audSt = () => { const box = $('#f-audst', main); if (!box) return; const L = it.audio || [];
+    if (!L.length) { box.innerHTML = ''; return; }
+    box.innerHTML = `<label>Kiểm tra audio (đang lưu)</label>${L.map((l, i) => { const ok = !!X.TTS.files(l.s, l.t); return `<div class="row small sd-aline"><button class="icon-btn" data-pl="${i}" title="Nghe thử">${icon('play')}</button><span class="pill ${ok ? 'sage' : 'gold'}">${ok ? 'có file' : 'chưa có file'}</span><span class="grow">${esc(l.s)}: ${esc(l.t)}</span></div>`; }).join('')}`;
+    $$('[data-pl]', box).forEach(b => b.onclick = () => { X.TTS.stop(); X.TTS.play([L[+b.dataset.pl]]); }); };
+  audSt(); X.__audSt = audSt;
   $('#f-img', main).onchange = async ev => { const f = ev.target.files[0]; if (!f) return; msg('Đang tải ảnh…', true);
     try { const url = await upload(f); $('#f-imgv', main).value = url; $('#f-imgp', main).outerHTML = `<img src="${esc(url)}" alt="" id="f-imgp" style="max-width:100%;border-radius:10px">`; msg('Đã tải ảnh, bấm Lưu để áp dụng.', true); } catch (e) { msg(errText(e)); } };
   $('#f-save', main).onclick = async () => {
@@ -140,13 +148,15 @@ function itemForm(main, id) {
     const img = $('#f-imgv', main).value; if (img) d.img = img;
     const pass = $('#f-pass', main), aud = $('#f-aud', main);
     if (pass) d.passage = pass.value; if (aud) d.audio = fromLines(aud.value);
-    if (P === 1 && aud && d.audio.length !== n) d.audio = opts.map((o, k) => ({ s: k % 2 ? 'M' : 'W', t: `(${LETTERS[k]}) ${o}` }));   // Part 1: 4 câu tả đọc lần lượt
+    // Part 1, Part 2: audio chính là câu hỏi + các đáp án → luôn đọc đúng chữ đang có trong ô đáp án
+    if (P === 1 && !it.passage) d.audio = opts.map((o, k) => ({ s: k % 2 ? 'M' : 'W', t: `(${LETTERS[k]}) ${o}` }));
+    if (P === 2) d.audio = [{ s: 'Q', t: d.prompt }, ...opts.map((o, k) => ({ s: 'A', t: `${LETTERS[k]}. ${o}` }))];
     try {
       $('#f-save', main).disabled = true; msg('Đang lưu…', true);
       await save('item', id, d);
       // đoạn văn / audio dùng chung: cập nhật luôn các câu cùng bộ
       for (const m of mates) { const md = {}; if (pass) md.passage = d.passage; if (aud && P !== 1) md.audio = d.audio; if (Object.keys(md).length) await save('item', m.id, Object.assign(JSON.parse(JSON.stringify(CT().find(m.id)?.data || {})), md)); }
-      msg('Đã lưu.', true); X.toast('Đã lưu câu này');
+      msg('Đã lưu.', true); X.toast('Đã lưu câu này'); audSt();
     } catch (e) { msg(errText(e)); } finally { $('#f-save', main).disabled = false; }
   };
   const rv = $('#f-rev', main); if (rv) rv.onclick = async () => { if (!confirm('Bỏ mọi chỗ đã sửa của câu này, quay về bản gốc?')) return; try { await unsave('item', id); X.toast('Đã về bản gốc'); location.reload(); } catch (e) { msg(errText(e)); } };
@@ -375,6 +385,7 @@ async function makeAudio(list, bar) {
       done++; if (rowsBuf.length >= 10) await flush();
     }
     await flush(); say(`✅ Đã tạo xong audio cho ${done} câu. Học sinh nghe được từ lần mở web tiếp theo.`);
+    if (X.__audSt && document.getElementById('f-audst')) X.__audSt();
     if (++audRounds < 4) setTimeout(async () => { if ((await scanMissing()).length) audCheck(true); }, 500);   // trong lúc tạo lại có chỗ mới sửa
   } catch (e) { console.warn(e); say(`<span style="color:var(--red)">Chưa tạo được audio: ${esc(errText(e))}. Thử lại bằng nút “Tạo audio còn thiếu”, hoặc dùng trình duyệt Chrome / Edge trên máy tính.</span>`); }
   finally { audBusy = false; }

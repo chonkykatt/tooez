@@ -103,7 +103,7 @@ window.EXAM_GUIDE = {
   4: { real: '30 câu (71-100), 10 bài nói. Mỗi bài 3 câu hỏi in sẵn, sau bài nói là 8 giây cho mỗi câu (bài có bảng: 12 giây).',
     rules: ['Câu đầu bài thường cho biết loại bài và người nói (tin nhắn thoại, thông báo, quảng cáo...).', 'Nghe tín hiệu chuyển ý: however, unfortunately, instead, so please... Đáp án hay nằm ngay sau.', 'Câu hỏi đồ họa: nghe tên trong bài rồi nhìn sang cột còn lại của bảng.'],
     fix: ['Nghe lại cả bài, chưa nhìn chữ, trả lời lại 3 câu.', 'Mở transcript, tô câu chứa đáp án và tín hiệu đứng trước nó.', 'Ghi cặp paraphrase giữa bài nói và đáp án.', 'Câu đồ họa sai: mình đã đọc nhầm cột, hay nghe nhầm tên?', 'Shadowing câu chứa đáp án. Ghi vào Sổ lỗi, làm lại sau 2 ngày.'] },
-  5: { real: '30 câu (101-130). Nên làm trong khoảng 10-11 phút, tức khoảng 20 giây một câu.',
+  5: { real: '30 câu (101-130). Nên làm trong khoảng 10-11 phút, tức trung bình 20 giây một câu (câu từ loại 5-10 giây, câu từ vựng lâu hơn).',
     rules: ['Nhìn 4 đáp án trước: cùng gốc từ khác đuôi → câu từ loại, làm bằng quy tắc, khoảng 5-10 giây.', '4 từ khác nghĩa → câu từ vựng, phải đọc cả câu.', 'Không chắc thì chọn tạm, đánh dấu Phân vân, đi tiếp. Đừng mắc kẹt ở một câu.'],
     fix: ['Làm lại câu sai khi chưa xem đáp án, lần này không giới hạn giờ.', 'Xác định loại câu: từ loại, thì, đại từ, giới từ / liên từ, hay từ vựng.', 'Viết ra quy tắc làm câu đó (vd. "trước danh từ cần tính từ").', 'Với câu từ vựng: ghi cả cụm từ đi kèm (collocation), không ghi từ đơn lẻ.', 'Ghi vào Sổ lỗi, làm lại sau 2 ngày.'] },
   6: { real: '16 câu (131-146), 4 đoạn văn, mỗi đoạn 4 chỗ trống (có 1 câu chọn cả câu). Nên làm trong khoảng 8-9 phút.',

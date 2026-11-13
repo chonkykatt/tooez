@@ -77,7 +77,7 @@ const deckKey = u => u.pk === 'p1' ? 'p1lib-' + u.deck : `lib-${u.pk}-${u.deck}`
 const rec = (uid, k) => { const r = S().stations['U:' + uid + ':' + k]; if (r) return r; const u = unitById[uid]; if (k === 'learn' && u && u.deck && S().lessons[deckKey(u)]) return { done: S().lessons[deckKey(u)], best: 100 }; return null; };
 const setRec = (uid, k, patch) => { const id = 'U:' + uid + ':' + k; S().stations[id] = Object.assign(S().stations[id] || { tries: 0 }, patch); X.save(); return S().stations[id]; };
 const passed = u => { const r = rec(u.id, u.core ? 'learn' : 'check'); return !!(r && r.done); };
-const stars = u => { if (u.core) return passed(u) ? 3 : 0; const r = rec(u.id, 'check'); if (!r || !r.best) return 0; return r.best >= 100 ? 3 : r.best >= 90 ? 2 : r.best >= 80 ? 1 : 0; };
+const stars = u => { if (u.core) return 0; const r = rec(u.id, 'check'); if (!r || !r.best) return 0; return r.best >= 100 ? 3 : r.best >= 90 ? 2 : r.best >= 80 ? 1 : 0; };
 X.unitStars = stars;
 const unlocked = u => { const units = P[u.pk].units; const i = units.indexOf(u); return i === 0 || passed(units[i - 1]) || !!rec(u.id, 'learn') || units.slice(0, i).every(passed); };
 const UL = pk => PART_OF[pk] ? 'Bài' : 'Unit';
@@ -94,7 +94,7 @@ X.pathStats = pk => {
   const att = (tr.layer < 3 ? S().attempts.filter(a => { const it = X.itemById[a.i]; return it && X.skillsOf && X.skillsOf(it).some(x => skillIds.includes(x)); }) : S().attempts.filter(a => tr.parts.includes(a.p))).slice(-60);
   const acc = att.length ? pct(att.filter(a => a.ok).length, att.length) : null;
   const score = Math.round(pct(done, total) * 0.6 + (acc ?? 0) * 0.4);
-  return { total, done, acc, score, n: att.length, next, level: X.levelOf(score), units: units.length, passed: units.filter(passed).length, stars: units.reduce((a, u) => a + stars(u), 0) };
+  return { total, done, acc, score, n: att.length, next, level: X.levelOf(score), units: units.length, passed: units.filter(passed).length, stars: units.reduce((a, u) => a + stars(u), 0), starMax: units.filter(u => !u.core).length * 3 };
 };
 X.stationHref = st => st.href || '#/path';
 
@@ -124,7 +124,7 @@ X.route(/^\/path(?:\/(\w+))?$/, (view, pk) => {
     ${X.stepHead('hoc')}<div class="kicker">Lộ trình</div><h1 class="h1">${esc(part.title)}</h1>
     <p class="lead">${part.layer === 1 ? 'Năng lực tiếng Anh nền dùng cho cả 7 Part. Học song song với Part, mỗi tuần vài unit.' : part.layer === 2 ? 'Kỹ năng hiểu dùng chung cho Nghe và Đọc. Học một lần ở đây, Part 2, 3, 4, 6, 7 đều dùng lại.' : 'Cách xử lý riêng của Part này.'} ${PART_OF[pk] ? `Bắt đầu bằng bài 1 (cách nghĩ và phương pháp), rồi học lần lượt ${part.units.length - 2} chủ đề, cuối cùng là bài tổng hợp. Mỗi chủ đề khoảng 15 phút: <b>học thẻ</b> (khái niệm, ví dụ, thử ngay) → <b>luyện</b> đúng dạng đó → <b>kiểm tra</b>, đạt 80% thì sang chủ đề sau. Từ vựng học riêng ở Kho từ vựng.` : `${part.units.length} unit, mỗi unit: kiến thức → luyện → kiểm tra. Qua 80% thì unit sau mở.`}</p>
     ${layerTabs(pk)}
-    <div class="card tint row sec" style="margin-top:18px"><div class="grow">${X.lvlHtml(st.score)} <span class="muted small">- ${st.passed}/${st.units} bài đã qua - ${st.stars}/${st.units * 3} sao${st.acc !== null ? ` - đúng ${st.acc}% gần đây` : ''}</span></div>
+    <div class="card tint row sec" style="margin-top:18px"><div class="grow">${X.lvlHtml(st.score)} <span class="muted small">- ${st.passed}/${st.units} bài đã qua - ${st.stars}/${st.starMax} sao${st.acc !== null ? ` - đúng ${st.acc}% gần đây` : ''}</span></div>
       ${curU ? `<a class="btn pri" href="#/unit/${curU.id}">Tiếp tục: ${UL(pk)} ${curU.no} - ${esc(curU.t)} ${icon('arrow')}</a>` : '<span class="pill sage">Đã qua toàn bộ Part</span>'}</div>
     <div class="utrack">${part.units.map(u => unitRow(u, u === curU)).join('')}</div></div>`;
   $$('.urow.lock', view).forEach(a => a.onclick = e => { e.preventDefault(); X.toast('Qua bài kiểm tra của bài trước để mở bài này.'); });
@@ -136,7 +136,7 @@ function unitRow(u, cur) {
     <span class="unum">${passed(u) ? icon('check') : lock ? icon('lock') : u.final ? '★' : u.no}</span>
     <span class="ubody"><span class="ut">${esc(u.t)}</span><span class="uv">${esc(u.vi)}</span><span class="ug">${esc(u.goal)}</span></span>
     <span class="umeta"><span class="sdots">${sts.map(k => `<i class="${rec(u.id, k)?.done ? 'on' : ''}" title="${ST.find(s => s.k === k).n}"></i>`).join('')}</span>
-      <span class="ustars">${[1, 2, 3].map(i => `<b class="${i <= sc ? 'on' : ''}">★</b>`).join('')}</span><span class="small faint">${u.final ? 'Tổng hợp' : `~${sts.reduce((a, k) => a + ST.find(s => s.k === k).min, 0)} phút`}</span></span></a>`;
+      ${u.core ? '' : `<span class="ustars">${[1, 2, 3].map(i => `<b class="${i <= sc ? 'on' : ''}">★</b>`).join('')}</span>`}<span class="small faint">${u.final ? 'Tổng hợp' : `~${sts.reduce((a, k) => a + ST.find(s => s.k === k).min, 0)} phút`}</span></span></a>`;
 }
 
 /* Aha! đi kèm từng bài: insight liên quan nhất của đúng Part đó (+ tư duy chung) */
@@ -165,9 +165,9 @@ X.route(/^\/unit\/(\w+)$/, (view, uid) => {
       <div class="goal">${icon('target')}<div><div class="kicker syn">Sau bài này bạn sẽ</div><div style="font-size:17px;font-weight:600;margin-top:2px">${esc(u.goal)}</div></div></div>
       ${(() => { const ids = u.skills || (() => { const c = {}; drill.forEach(i => (X.skillsOf ? X.skillsOf(i) : []).forEach(k => { if (X.skillById[k].layer < 3) c[k] = (c[k] || 0) + 1; })); return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]); })();
         return ids.length ? `<div class="row small" style="margin-bottom:12px"><span class="muted">Kỹ năng luyện:</span>${ids.map(k => X.skillById[k] ? `<a class="pill syn" href="#/skills">${esc(X.skillById[k].n)}</a>` : '').join('')}</div>` : ''; })()}
-      <div class="row"><span class="ustars big">${[1, 2, 3].map(i => `<b class="${i <= stars(u) ? 'on' : ''}">★</b>`).join('')}</span><span class="small muted">${stars(u) ? `Điểm kiểm tra tốt nhất ${rec(u.id, 'check').best}%` : '80% = 1 sao - 90% = 2 sao - 100% = 3 sao'}</span></div></div>
+      ${u.core ? '<div class="small muted">Bài mở đầu: đọc hiểu là qua, không chấm sao.</div>' : `<div class="row"><span class="ustars big">${[1, 2, 3].map(i => `<b class="${i <= stars(u) ? 'on' : ''}">★</b>`).join('')}</span><span class="small muted">${stars(u) ? `Điểm kiểm tra tốt nhất ${rec(u.id, 'check').best}%` : '80% = 1 sao - 90% = 2 sao - 100% = 3 sao'}</span></div>`}</div>
     <div class="stlist">${sts.map((k, i) => { const s = ST.find(x => x.k === k), r = rec(u.id, k);
-      const meta = k === 'vocab' ? `${learnedW}/${words.length} từ đã học - mỗi lượt 8 từ` : k === 'drill' ? `${drill.length} câu trong kho` : k === 'learn' ? (u.core ? 'Cách nghĩ + quy trình 4 bước' : `${u.deck ? ((DECK(u.pk).topics.find(t => t.id === u.deck) || {}).cards || []).length : u.cards.length} thẻ - khái niệm, ví dụ, thử ngay`) : u.final ? `${Math.min(drill.length, finalSize(u))} câu` : `10 câu`;
+      const meta = k === 'vocab' ? `${learnedW}/${words.length} từ đã học - mỗi lượt 8 từ` : k === 'drill' ? `${drill.length} câu trong kho` : k === 'learn' ? (u.core ? 'Cách nghĩ + quy trình 4 bước' : `${u.deck ? ((DECK(u.pk).topics.find(t => t.id === u.deck) || {}).cards || []).length : u.cards.length} thẻ - khái niệm, ví dụ, thử ngay`) : u.final ? `${Math.min(drill.length, finalSize(u))} câu` : `${words.length >= 4 ? 10 : 8} câu`;
       return `<a class="stc ${r?.done ? 'done' : ''} ${k === nextK ? 'next' : ''}" style="--sc:${{ learn: 'var(--sky)', vocab: 'var(--gold)', drill: 'var(--ember)', check: 'var(--syn)' }[k]}" href="${stHref(u, k)}"><span class="sn">${r?.done ? icon('check') : i + 1}</span><span class="grow"><b>${s.n}</b><span class="small muted"> - ${meta}${r?.best != null ? ` - tốt nhất ${r.best}%` : ''}</span><div class="small faint">${s.d}</div></span><span class="btn sm ${k === nextK ? 'pri' : ''}">${r?.done ? 'Làm lại' : 'Bắt đầu'}</span></a>`; }).join('')}</div>
     ${PART_OF[u.pk] && !u.final ? ahaHtml(u) : ''}
     ${u.lib && u.lib.length ? `<div class="small muted sec">Muốn đọc kỹ hơn: ${u.lib.map(l => `<a href="#/lesson/${l}">bài đọc thêm</a>`).join(', ')}.</div>` : ''}

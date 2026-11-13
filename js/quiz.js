@@ -83,7 +83,7 @@ X.runQuiz = (view, o) => {
     const showPrompt = !(it.kind === 'p2' && !st.showText && !reveal) && !(it.hideq === 'prompt' && !st.showText && !reveal);
     const fb = checked ? `<div class="fb ${chosen === it.answer ? 'ok' : 'bad'}">${X.xi(chosen === it.answer ? 'happy' : 'sad', 54)}<div><b class="h">${chosen === it.answer ? ['Chuẩn luôn!', 'Chính xác!', 'Đúng rồi!', 'Quá đỉnh!'][st.i % 4] : `Chưa đúng, đáp án là ${LETTERS[it.answer]}`}</b>${it.explain ? `<div>${it.explain.includes('<') ? it.explain : esc(it.explain)}</div>` : ''}
       ${it.audio && it.audio.length > 1 && it.kind !== 'p2' && !it.ao ? `<div class="transcript">${it.audio.map(l => `<p>${['M', 'W', 'M2'].includes(l.s) ? `<b>${l.s}:</b> ` : ''}${esc(l.t)}</p>`).join('')}${it.transcriptVi ? `<p class="muted small">${esc(it.transcriptVi)}</p>` : ''}</div>` : ''}</div></div>` : '';
-    const confRow = !checked ? `<div class="conf"><span class="lbl">Mức chắc chắn:</span>${CONF.map(([k, n], j) => `<button data-c="${k}" class="${(st.conf[st.i] || (mode === 'test' ? '' : 'sure')) === k ? 'on' : ''}">${n} <kbd>${'QWE'[j]}</kbd></button>`).join('')}</div>` : '';
+    const confRow = !checked ? `<div class="conf"><span class="lbl">Mức chắc chắn${st.conf[st.i] ? '' : ' <span class="faint">(bấm 1 nút, để biết câu nào cần ôn)</span>'}:</span>${CONF.map(([k, n], j) => `<button data-c="${k}" class="${st.conf[st.i] === k ? 'on' : ''}">${n} <kbd>${'QWE'[j]}</kbd></button>`).join('')}</div>` : '';
     const actions = mode === 'practice'
       ? `<div class="qz-actions">${!checked ? `<button class="btn pri" data-k="check" ${chosen === null ? 'disabled' : ''}>Kiểm tra <kbd style="background:transparent;color:inherit;border-color:#555">Enter</kbd></button>` : `<button class="btn pri" data-k="next">${st.i < total - 1 ? 'Câu tiếp' : 'Xem kết quả'} ${icon('arrow')}</button>`}
           ${checked && chosen !== it.answer ? '<span class="small muted">Câu này đã vào Sổ lỗi để chữa sau.</span>' : ''}</div>`
@@ -91,7 +91,7 @@ X.runQuiz = (view, o) => {
           <button class="btn pri" data-k="next">${st.i < total - 1 ? 'Câu tiếp' : 'Nộp bài'} ${icon('arrow')}</button>
           ${st.i < total - 1 && !o.reviewing ? '<button class="btn ghost" data-k="submit" style="margin-left:auto">Nộp bài</button>' : ''}</div>`;
     const card = `<div class="q-card">
-      ${it.part ? `<div class="row" style="margin-bottom:6px"><span class="pill">${X.partOf(it.part).n}${it.num ? ' - Câu ' + it.num : ''}</span>${it.skill ? `<span class="pill syn">${esc(it.skill)}</span>` : ''}${set && set.length > 1 ? `<span class="pill">${set.indexOf(it) + 1}/${set.length} trong bài</span>` : ''}</div>` : ''}
+      ${it.part ? `<div class="row" style="margin-bottom:6px"><span class="pill">${X.partOf(it.part).n}</span>${it.skill ? `<span class="pill syn">${esc(it.skill)}</span>` : ''}${set && set.length > 1 ? `<span class="pill">${set.indexOf(it) + 1}/${set.length} trong bài</span>` : ''}</div>` : ''}
       ${audioBox(it)}
       ${it.img ? `<div class="wimg on lab-pic q-pic"><img src="${it.img}" alt=""></div>` : it.context && !(it.hideq === 'context' && !st.showText && !reveal) ? `<div class="q-ctx">${esc(it.context)}</div>` : ''}
       ${showPrompt ? `<div class="q-prompt">${(it.kind === 'p2' || it.hideq === 'prompt' && it.part === 2) && reveal ? X.hiQ(it.prompt) : esc(it.prompt)}</div>${(it.kind === 'p2' || it.hideq === 'prompt' && it.part === 2) && reveal ? X.hiLegend : ''}${(reveal || mode === 'practice' && checked) && it.vi ? `<div class="q-vi">${esc(it.vi)}</div>` : ''}` : `<div class="q-prompt muted">${esc(it.ask || 'Nghe câu hỏi, chọn câu trả lời đúng.')}</div>`}
@@ -115,7 +115,7 @@ X.runQuiz = (view, o) => {
     sh.innerHTML = items.map((it, k) => {
       let c = st.ans[k] !== null ? 'ans' : '';
       if (o.reviewing) c = st.ans[k] === it.answer ? 'ok' : 'bad';
-      return `<button class="${c} ${k === st.i ? 'cur' : ''}" data-j="${k}">${it.num || k + 1}</button>`;
+      return `<button class="${c} ${k === st.i ? 'cur' : ''}" data-j="${k}">${k + 1}</button>`;
     }).join('');
     $$('button', sh).forEach(b => b.onclick = () => { stamp(); st.i = +b.dataset.j; render(); });
   }
@@ -134,7 +134,6 @@ X.runQuiz = (view, o) => {
   function choose(k) {
     if (st.checked[st.i] || o.reviewing) return;
     st.ans[st.i] = k;
-    if (!st.conf[st.i]) st.conf[st.i] = 'sure';
     render();
   }
   function check() {
@@ -174,7 +173,7 @@ X.runQuiz = (view, o) => {
     }
     const rows = items.map((it, k) => ({ item: it, chosen: st.ans[k], ok: st.ans[k] === it.answer, ms: st.ms[k], conf: st.conf[k] }));
     const res = { total, correct: rows.filter(r => r.ok).length, ms: Date.now() - st.t0, rows, at: Date.now() };
-    if (mode === 'test') X.addXP(res.correct + 10, 'Hoàn thành bài');
+    if (mode === 'test') X.addXP(res.correct + 10, 'Nộp bài');
     o.onFinish && o.onFinish(res);
   }
   function bind(it) {
@@ -220,7 +219,7 @@ X.showResult = (view, res, o = {}) => {
   if (X.skillsOf) rows.forEach(r => X.skillsOf(r.item).forEach(k => { (bySk[k] ||= { n: 0, ok: 0 }); bySk[k].n++; bySk[k].ok += r.ok; }));
   const skRows = Object.entries(bySk).filter(([k]) => X.skillById[k] && X.skillById[k].layer !== 3).sort((a, b) => a[1].ok / a[1].n - b[1].ok / b[1].n).slice(0, 6);
   // confidence matrix
-  const cm = (c, ok) => rows.filter(r => (r.conf || 'sure') === c && r.chosen !== null && r.ok === ok).length;
+  const cm = (c, ok) => rows.filter(r => r.conf === c && r.chosen !== null && r.ok === ok).length;
   const sureWrong = cm('sure', false), guessRight = cm('guess', true);
   // position within set (Part 3/4/6/7)
   const pos = {};
@@ -244,12 +243,18 @@ X.showResult = (view, res, o = {}) => {
 
   view.innerHTML = `<div class="page">
     <div class="kicker">${esc(o.kicker || 'Kết quả')}</div>
-    <div class="hello">${X.xi(score >= 80 ? 'happy' : score >= 50 ? 'think' : 'sad', 92)}<div><h1 class="h1">${esc(o.title || '')}</h1><p class="lead">${score >= 90 ? 'Xuất sắc! Soi kỹ vẫn không thấy hổng.' : score >= 80 ? 'Tốt lắm, giữ phong độ này.' : score >= 50 ? 'Ổn rồi, xem phần phân tích bên dưới để biết sửa chỗ nào.' : 'Chưa sao, Tooez đã ghi lại hết câu sai vào Sổ lỗi.'}</p></div></div>
+    <div class="hello">${X.xi(score >= 80 ? 'happy' : score >= 50 ? 'think' : 'sad', 92)}<div><h1 class="h1">${esc(o.title || '')}</h1><p class="lead">${o.passMark && score < o.passMark ? `Chưa đạt lần này (cần ${o.passMark}%, bạn được ${score}%). Xem lại câu sai bên dưới, ôn đúng chỗ đó rồi làm lại, đề sẽ đổi câu.` : score >= 90 ? 'Xuất sắc! Soi kỹ vẫn không thấy hổng.' : score >= 80 ? 'Tốt lắm, giữ phong độ này.' : score >= 50 ? 'Ổn rồi, xem phần phân tích bên dưới để biết sửa chỗ nào.' : 'Chưa sao, Tooez đã ghi lại hết câu sai vào Sổ lỗi.'}</p></div></div>
     <div class="card sec" style="margin-top:18px"><div class="res-head">
       <div class="big-score">${res.correct}<small>/${res.total}</small></div>
       <div><div class="row"><span class="pill ${score >= 80 ? 'sage' : score >= 60 ? 'gold' : 'red'}">${score}% chính xác</span><span class="pill">${fmtMs(res.ms)}</span><span class="pill">${fmtMs(res.ms / Math.max(1, res.total))}/câu</span>${o.passMark ? `<span class="pill ${score >= o.passMark ? 'sage' : 'ember'}">${score >= o.passMark ? 'Đạt' : `Cần ${o.passMark}% để đạt`}</span>` : ''}</div>
       <div class="bar sage" style="margin-top:12px;max-width:420px"><i style="width:${score}%"></i></div></div>
     </div></div>
+    <div class="row sec">
+      ${wrong.length ? `<a class="btn syn" href="#/errors">${icon('err')} Chữa ${wrong.length} câu sai trong Sổ lỗi</a>` : ''}
+      ${o.canReview ? `<button class="btn" data-k="review">${icon('eye')} Xem lại từng câu</button>` : ''}
+      ${o.retry ? `<button class="btn" data-k="retry">${icon('refresh')} Làm lại</button>` : ''}
+      ${o.next ? `<a class="btn pri" href="${o.next.href}">${esc(o.next.label)} ${icon('arrow')}</a>` : `<a class="btn ${wrong.length ? '' : 'pri'}" href="${o.back || '#/today'}">Xong</a>`}
+    </div>
     ${insights.length ? `<div class="card sec ink"><div class="kicker" style="color:#9A9DA8">Soi nhanh</div><ul style="margin:10px 0 0;padding-left:18px">${insights.map(s => `<li style="margin:6px 0">${s}</li>`).join('')}</ul></div>` : ''}
     <div class="grid g2 sec">
       <div class="card"><div class="h3" style="margin-bottom:10px">Theo dạng câu</div>
@@ -258,7 +263,7 @@ X.showResult = (view, res, o = {}) => {
       ${skRows.length ? `<div class="card"><div class="h3" style="margin-bottom:4px">Theo kỹ năng</div><div class="small muted" style="margin-bottom:8px">Một câu có thể luyện nhiều kỹ năng. <a href="#/skills">Xem Bản đồ kỹ năng</a></div>
         ${skRows.map(([k, v]) => `<div class="hbar"><span>${esc(X.skillById[k].n)}</span><div class="bar ${v.ok / v.n >= .7 ? 'sage' : 'ember'}"><i style="width:${pct(v.ok, v.n)}%"></i></div><span class="mono small">${v.ok}/${v.n}</span></div>`).join('')}</div>` : ''}
       <div class="card"><div class="h3" style="margin-bottom:10px">Chắc chắn × Đúng sai</div>
-        <div class="cmatrix">
+        ${rows.some(r => r.conf) ? '' : '<p class="small muted" style="margin:0 0 8px">Lần này bạn chưa đánh dấu mức chắc chắn. Lần sau bấm Chắc / Phân vân / Lụi ở mỗi câu để Tooez tách được câu hổng thật và câu ăn may.</p>'}<div class="cmatrix">
           <div class="c"><span class="small muted">Chắc - đúng</span><b>${cm('sure', true)}</b></div>
           <div class="c" style="background:var(--red-soft)"><span class="small muted">Chắc - sai</span><b>${sureWrong}</b></div>
           <div class="c"><span class="small muted">Phân vân - đúng</span><b>${cm('unsure', true)}</b></div>
@@ -269,14 +274,8 @@ X.showResult = (view, res, o = {}) => {
         ${Object.keys(pos).length > 1 ? `<div class="h3" style="margin:18px 0 8px">Sai theo vị trí câu trong bài</div>${Object.entries(pos).map(([p, v]) => `<div class="hbar"><span>Câu thứ ${p}</span><div class="bar ember"><i style="width:${pct(v.bad, v.n)}%"></i></div><span class="mono small">${v.bad}/${v.n}</span></div>`).join('')}` : ''}
       </div>
     </div>
-    <div class="row sec">
-      ${wrong.length ? `<a class="btn syn" href="#/errors">${icon('err')} Chữa ${wrong.length} câu sai trong Sổ lỗi</a>` : ''}
-      ${o.canReview ? `<button class="btn" data-k="review">${icon('eye')} Xem lại từng câu</button>` : ''}
-      ${o.retry ? `<button class="btn" data-k="retry">${icon('refresh')} Làm lại</button>` : ''}
-      ${o.next ? `<a class="btn pri" href="${o.next.href}">${esc(o.next.label)} ${icon('arrow')}</a>` : `<a class="btn ${wrong.length ? '' : 'pri'}" href="${o.back || '#/today'}">Xong</a>`}
-    </div>
     ${wrong.length ? `<div class="sec"><div class="sec-h"><h2 class="h2">Câu sai</h2><span class="muted small">Đọc lời giải, rồi vào Sổ lỗi ghi nguyên nhân và quy tắc rút ra.</span></div>
-      ${wrong.map(r => `<div class="err"><div class="top"><span class="pill">${X.partOf(r.item.part).n}${r.item.num ? ' - ' + r.item.num : ''}</span>${r.item.skill ? `<span class="pill syn">${esc(r.item.skill)}</span>` : ''}${r.conf ? `<span class="pill ${r.conf === 'sure' ? 'red' : ''}">${confName(r.conf)}</span>` : ''}</div>
+      ${wrong.map(r => `<div class="err"><div class="top"><span class="pill">Câu ${rows.indexOf(r) + 1} - ${X.partOf(r.item.part).n}</span>${r.item.skill ? `<span class="pill syn">${esc(r.item.skill)}</span>` : ''}${r.conf ? `<span class="pill ${r.conf === 'sure' ? 'red' : ''}">${confName(r.conf)}</span>` : ''}</div>
         ${r.item.context ? `<div class="q-ctx small">${esc(r.item.context)}</div>` : ''}<div class="q">${esc(r.item.prompt)}</div>
         <div class="ans"><span class="y">Bạn chọn: ${r.chosen === null ? '(bỏ trống)' : LETTERS[r.chosen] + '. ' + esc(r.item.options[r.chosen])}</span><span class="c">Đáp án: ${LETTERS[r.item.answer]}. ${esc(r.item.options[r.item.answer])}</span></div>
         ${r.item.explain ? `<div class="small muted">${r.item.explain.includes('<') ? r.item.explain : esc(r.item.explain)}</div>` : ''}</div>`).join('')}</div>` : ''}

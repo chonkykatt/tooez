@@ -37,6 +37,8 @@ X.route(/^\/tests$/, view => {
         <div><b>2. Chữa ngay sau khi làm</b><div class="small muted">Dùng phần "Chữa từng câu": nghe lại hoặc đọc lại, tìm bằng chứng, gọi tên nguyên nhân. Câu sai tự vào Sổ lỗi.</div></div>
         <div><b>3. Làm Đề 2 sau 2-3 tuần học</b><div class="small muted">So điểm với Đề 1 để biết Lộ trình và Lab có đang hiệu quả không.</div></div></div>
       <div class="small faint" style="margin-top:10px">${done ? `Bạn đã làm ${done}/${X.EXAMS.length} đề.` : 'Chưa làm đề nào. Gợi ý: bắt đầu bằng Part 2 Đề 1 (khoảng 10 phút).'} Kết quả đề được dùng cho Bản đồ kỹ năng, Sổ lỗi và gợi ý ở trang Hôm nay.</div></div>
+    ${X.scoreCard()}
+    <a class="card link sec row" href="#/fulltest" style="gap:16px">${X.xi('wow', 56, 'static')}<div class="grow"><div class="kicker syn">Thi thử đủ bài</div><div class="h3">Bài thi 200 câu, 2 tiếng, như phòng thi</div><div class="small muted">Ghép Đề 1 của 7 Part, Nghe liền một mạch, Đọc chung 75 phút. Có ước tính điểm TOEIC.${S().fullRun && S().fullRun.i > 0 && S().fullRun.i < 7 ? ' <b>Bạn đang làm dở.</b>' : ''}</div></div><span class="btn pri">Vào thi ${icon('arrow')}</span></a>
     ${parts.map(p => { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) return ''; const pp = X.partOf(p);
       return `<div class="sec"><div class="sec-h"><div><div class="kicker">${LISTEN(p) ? 'Nghe' : 'Đọc'}</div><h2 class="h2">Part ${p} - ${esc({ 3: 'Hội thoại', 4: 'Bài nói' }[p] || pp.vi || '')}</h2></div><span class="small muted ex-real">${esc(G(p).real)}</span></div>
         <div class="grid g2">${es.map(e => { const its = X.examItems(e), h = history(e.id), last = h[h.length - 1], best = h.length ? Math.max(...h.map(x => x.score)) : null, ses = X.sessGet('/exam/' + e.id);
@@ -66,13 +68,14 @@ X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
 });
 
 /* ---------------- làm bài ---------------- */
-function runExam(view, e, items, sv) {
+function runExam(view, e, items, sv, chain) {
   const listen = LISTEN(e.part), pages = pagesOf(items), N = k => e.start + k;
-  const st = { ans: items.map(() => null), conf: items.map(() => 'sure'), ms: items.map(() => 0), pi: 0, left: (e.time || 0) * 60, t0: Date.now(), tok: 0, paused: false, done: false, shown: Date.now() };
+  const st = { ans: items.map(() => null), conf: items.map(() => null), ms: items.map(() => 0), pi: 0, left: (e.time || 0) * 60, t0: Date.now(), tok: 0, paused: false, done: false, shown: Date.now() };
+  if (chain && !listen && chain.left != null) st.left = chain.left;
   if (sv) Object.assign(st, { ans: sv.ans, conf: sv.conf, ms: sv.ms || st.ms, pi: sv.pi || 0, left: sv.left ?? st.left, t0: Date.now() - (sv.elapsed || 0) });
   const textMode = listen && TTS.missing();
-  const sKey = '/exam/' + e.id;
-  const persist = () => { if (!st.done) X.sessSet(sKey, { kind: 'exam', title: X.examTitle(e.id), n: items.length, i: pages[st.pi].idx[0], k: pages[st.pi].idx[0], num: e.start + pages[st.pi].idx[0], last: e.start + items.length - 1, pi: st.pi, ans: st.ans, conf: st.conf, ms: st.ms, left: st.left, elapsed: Date.now() - st.t0 }); };
+  const sKey = chain ? '/fulltest' : '/exam/' + e.id;
+  const persist = () => { if (!st.done) X.sessSet(sKey, { kind: 'exam', exam: e.id, title: chain ? `Bài thi 200 câu - Part ${e.part}` : X.examTitle(e.id), n: items.length, i: pages[st.pi].idx[0], k: pages[st.pi].idx[0], num: e.start + pages[st.pi].idx[0], last: e.start + items.length - 1, pi: st.pi, ans: st.ans, conf: st.conf, ms: st.ms, left: st.left, elapsed: Date.now() - st.t0 }); };
   let timer = null;
   const stamp = () => { const now = Date.now(), p = pages[st.pi]; if (p) p.idx.forEach(k => { st.ms[k] += (now - st.shown) / p.idx.length; }); st.shown = now; };
   const stopAll = () => { st.tok++; clearInterval(timer); TTS.stop(); };
@@ -80,12 +83,12 @@ function runExam(view, e, items, sv) {
 
   view.innerHTML = `<div class="page wide"><div class="qz ex-run">
     <div class="qz-top"><button class="icon-btn" id="ex-x" title="Thoát">${icon('x')}</button>
-      <div style="min-width:0"><div class="kicker">Đề thi - Part ${e.part}</div><div class="h3">${esc(X.examTitle(e.id))}</div></div>
+      <div style="min-width:0"><div class="kicker">${chain ? 'Bài thi 200 câu' : 'Đề thi'} - Part ${e.part}</div><div class="h3">${esc(X.examTitle(e.id))}</div></div>
       <div class="bar"><i style="width:0"></i></div><span class="count mono" id="ex-c"></span><span class="qz-timer" id="ex-t"></span></div>
     ${textMode ? '<div class="card tint small" style="margin-bottom:12px">Không có giọng đọc trên trình duyệt này, nên chữ hiện thay cho audio. Kết quả vẫn được tính.</div>' : ''}
     <div id="ex-main"></div><div class="sheet ex-sheet" id="ex-sheet"></div></div></div>`;
   const main = $('#ex-main', view);
-  $('#ex-x', view).onclick = () => { if (!confirm('Thoát đề? Bài làm được lưu lại, lần sau làm tiếp được.')) return; stamp(); persist(); stopAll(); location.hash = '#/tests'; };
+  $('#ex-x', view).onclick = () => { if (!confirm('Thoát đề? Bài làm được lưu lại, lần sau làm tiếp được.')) return; stamp(); persist(); stopAll(); location.hash = chain ? '#/fulltest' : '#/tests'; };
 
   if (!listen) {
     timer = setInterval(() => { st.left--; const el = $('#ex-t', view); if (el) { el.textContent = fmtMs(Math.max(0, st.left) * 1000); el.classList.toggle('warn', st.left < 120); } if (st.left <= 0) { clearInterval(timer); X.toast('Hết giờ, bài đã được nộp'); finish(); } if (st.left % 15 === 0) persist(); }, 1000);
@@ -107,7 +110,7 @@ function runExam(view, e, items, sv) {
     else body = `<div class="qz-body split"><div class="passage" id="ex-pass"><div class="kicker" style="margin-bottom:10px">Questions ${N(k0)}-${N(k1)} refer to the following ${esc(docName(it))}.</div>${it.passage || ''}</div><div>${p.idx.map(k => qBlock(k)).join('')}</div></div>`;
     const tx = textMode && it.audio ? `<div class="transcript">${it.audio.map(l => `<p>${['M', 'W', 'M2'].includes(l.s) ? `<b>${l.s}:</b> ` : ''}${esc(l.t)}</p>`).join('')}</div>` : '';
     const ctl = listen && !textMode
-      ? `<div class="ex-ctl"><span class="ex-status" id="ex-st">${icon('vol')} Đang chuẩn bị…</span><span class="grow"></span><button class="btn sm" id="ex-pause">${st.paused ? 'Tiếp tục' : 'Tạm dừng'}</button><button class="btn sm ghost" id="ex-skip">Sang câu tiếp ${icon('arrow')}</button></div>`
+      ? `<div class="ex-ctl"><span class="ex-status" id="ex-st">${icon('vol')} Đang chuẩn bị…</span><span class="grow"></span><button class="btn sm" id="ex-pause">${st.paused ? 'Tiếp tục' : 'Tạm dừng'}</button><button class="btn sm ghost" id="ex-skip" ${textMode ? '' : 'disabled'} title="Mở khi audio phát xong, như thi thật">Chọn xong, đi tiếp ${icon('arrow')}</button></div>`
       : `<div class="qz-actions"><button class="btn" id="ex-prev" ${st.pi === 0 ? 'disabled' : ''}>${icon('back')} Trước</button><button class="btn pri" id="ex-next">${st.pi < pages.length - 1 ? 'Câu tiếp' : 'Nộp bài'} ${icon('arrow')}</button>${st.pi < pages.length - 1 ? '<button class="btn ghost" id="ex-sub" style="margin-left:auto">Nộp bài</button>' : ''}</div>`;
     main.innerHTML = `<div class="q-card ex-card-q">${body}${tx}${ctl}</div>`;
     if (e.part === 6) { const b = $(`.blank[data-n="${it.num}"]`, main); if (b) b.classList.add('cur'); }
@@ -130,7 +133,7 @@ function runExam(view, e, items, sv) {
     on('#ex-prev', () => { stamp(); st.pi--; render(); });
     on('#ex-next', () => { stamp(); if (st.pi < pages.length - 1) { st.pi++; render(); } else submit(); });
     on('#ex-sub', submit);
-    on('#ex-skip', () => { st.tok++; TTS.stop(); advance(); });
+    on('#ex-skip', () => { if (textMode) return advance(); if (st.skipWait) st.skipWait(); });
     on('#ex-pause', () => { if (st.paused) { st.paused = false; render(); } else { st.paused = true; st.tok++; TTS.stop(); $('#ex-pause', main).textContent = 'Tiếp tục'; status('Đang tạm dừng. Bấm Tiếp tục để phát lại câu này từ đầu.'); } });
     document.onkeydown = ev => { if (ev.target.matches('input,textarea')) return; const k = ev.key.toLowerCase(); const p = pages[st.pi];
       if (/^[1-4]$/.test(k) && p.idx.length === 1) { const b = $(`[data-k="${p.idx[0]}"][data-o="${+k - 1}"]`, main); if (b) b.click(); }
@@ -139,10 +142,15 @@ function runExam(view, e, items, sv) {
   }
   function submit() { const n = st.ans.filter(a => a === null).length; if (n && !confirm(`Còn ${n} câu chưa chọn. Nộp bài?`)) return; finish(); }
   const status = t => { const el = $('#ex-st', main); if (el) el.innerHTML = t; };
-  const wait = (sec, tk, label) => new Promise(res => { let s = sec; status(`${label} <b class="mono">${s}s</b>`); const iv = setInterval(() => { if (tk !== st.tok) { clearInterval(iv); return res(false); } s--; if (s <= 0) { clearInterval(iv); res(true); } else status(`${label} <b class="mono">${s}s</b>`); }, 1000); });
+  const skipBtn = on => { const b = $('#ex-skip', main); if (b) b.disabled = !on; if (!on) st.skipWait = null; };
+  // chỉ được đi tiếp sớm khi audio đã phát xong và đang trong giờ chọn đáp án (thi thật không tua được)
+  const wait = (sec, tk, label) => new Promise(res => { let s = sec; status(`${label} <b class="mono">${s}s</b>`);
+    const end = ok => { clearInterval(iv); skipBtn(false); res(ok); };
+    const iv = setInterval(() => { if (tk !== st.tok) return end(false); s--; if (s <= 0) end(true); else status(`${label} <b class="mono">${s}s</b>`); }, 1000);
+    st.skipWait = () => { if (tk === st.tok) end(true); }; skipBtn(true); });
   const say = (t, tk) => tk === st.tok ? TTS.speak(t, { sex: 'M', role: 'N' }) : Promise.resolve();
   async function play() {
-    const tk = ++st.tok, p = pages[st.pi], it = items[p.idx[0]];
+    const tk = ++st.tok, p = pages[st.pi], it = items[p.idx[0]]; skipBtn(false);
     await new Promise(r => setTimeout(r, 450)); if (tk !== st.tok) return;
     if (e.part <= 2) {
       status(`${icon('vol')} Đang phát câu ${N(p.idx[0])}…`);
@@ -171,6 +179,7 @@ function runExam(view, e, items, sv) {
     const res = { total: items.length, correct: rows.filter(r => r.ok).length, ms: Date.now() - st.t0, rows, at: Date.now() };
     (S().tests[e.id] ||= []).push({ at: res.at, score: pct(res.correct, res.total), n: res.total, ms: res.ms, mode: 'exam', ans: st.ans, conf: st.conf });
     X.addXP(res.correct + 15, 'Hoàn thành đề'); X.save();
+    if (chain) return chain.onDone(res, st.left);
     showRes(view, e, items, res);
   }
   render();
@@ -197,12 +206,12 @@ function showRes(view, e, items, res) {
       <a class="card link flat" href="#/path/${pk}"><div class="kicker">Bước 2 - Học</div><b>Lộ trình ${esc(X.partOf(e.part).n)}</b><span class="small muted">Học các unit còn thiếu của Part này</span></a>
       <a class="card link flat" href="#/lab"><div class="kicker">Bước 3 - Luyện</div><b>Lab phản xạ</b><span class="small muted">Luyện tốc độ cho dạng còn chậm</span></a>
       ${other ? `<a class="card link flat" href="#/exam/${other.id}"><div class="kicker">Bước 1 - Đo lại</div><b>${esc(X.examTitle(other.id))}</b><span class="small muted">Làm sau 2-3 tuần để xem tiến bộ</span></a>` : ''}</div></div>`;
-  const first = $('.page .card.sec', view); if (first) first.insertAdjacentHTML('afterend', html);
+  const first = $('.page > .row.sec', view) || $('.page .card.sec', view); if (first) first.insertAdjacentHTML('afterend', html + X.scoreCard());
   const b = $('#ex-rv', view); if (b) b.onclick = () => review(view, e, items, res);
 }
 
 /* ---------------- chữa từng câu ---------------- */
-function review(view, e, items, res) {
+function review(view, e, items, res, onBack) {
   const pages = pagesOf(items), N = k => e.start + k, listen = LISTEN(e.part);
   let pi = Math.max(0, pages.findIndex(p => p.idx.some(k => !res.rows[k].ok)));
   const errOf = it => S().errors.find(x => x.item === it.id && x.status !== 'fixed');
@@ -211,16 +220,16 @@ function review(view, e, items, res) {
     <label class="small row" style="gap:6px"><input type="checkbox" id="rv-only"> Chỉ câu sai, phân vân, lụi</label></div>
     <div id="rv-main"></div><div class="sheet ex-sheet" id="rv-sheet"></div></div></div>`;
   const main = $('#rv-main', view);
-  const back = () => { TTS.stop(); showRes(view, e, items, res); };
+  const back = () => { TTS.stop(); if (onBack) return onBack(); showRes(view, e, items, res); };
   $('#rv-x', view).onclick = back;
-  const need = k => !res.rows[k].ok || res.rows[k].conf !== 'sure';
+  const need = k => !res.rows[k].ok || (res.rows[k].conf && res.rows[k].conf !== 'sure');
   const quote = it => [...String(it.explain || '').matchAll(/[“"]([^”"]{8,})[”"]/g)].map(m => m[1].replace(/<[^>]+>/g, '').replace(/…/g, '').trim().toLowerCase().slice(0, 40));
   function qRev(k) {
     const it = items[k], r = res.rows[k], er = errOf(it);
     const opts = it.options.map((op, j) => `<div class="opt ${j === it.answer ? 'ok' : j === r.chosen ? 'bad' : ''}"><span class="L">${LETTERS[j]}</span><span>${esc(op)}${it.optWhy && it.optWhy[j] ? `<span class="why">${esc(it.optWhy[j])}</span>` : ''}</span></div>`).join('');
     const prompt = e.part === 1 ? 'Câu nào tả đúng tranh?' : it.prompt;
     return `<div class="ex-q rv ${r.ok ? 'is-ok' : 'is-bad'}"><div class="ex-qn"><b>${N(k)}.</b> ${e.part === 2 ? X.hiQ(it.prompt) : esc(prompt)}
-        <span class="pill ${r.ok ? 'sage' : 'red'}">${r.chosen === null ? 'Bỏ trống' : r.ok ? 'Đúng' : 'Sai'}</span>${r.conf !== 'sure' ? `<span class="pill gold">${X.confName(r.conf)}</span>` : ''}${it.skill ? `<span class="pill syn">${esc(it.skill)}</span>` : ''}<span class="small faint">${fmtMs(r.ms)}</span></div>
+        <span class="pill ${r.ok ? 'sage' : 'red'}">${r.chosen === null ? 'Bỏ trống' : r.ok ? 'Đúng' : 'Sai'}</span>${r.conf && r.conf !== 'sure' ? `<span class="pill gold">${X.confName(r.conf)}</span>` : ''}${it.skill ? `<span class="pill syn">${esc(it.skill)}</span>` : ''}<span class="small faint">${fmtMs(r.ms)}</span></div>
       ${e.part === 2 ? X.hiLegend : ''}${it.vi ? `<div class="q-vi">${esc(it.vi)}</div>` : ''}
       <div class="opts">${opts}</div>
       ${it.explain ? `<div class="ex-exp"><b>Vì sao:</b> ${it.explain.includes('<') ? it.explain : esc(it.explain)}</div>` : ''}
@@ -269,4 +278,91 @@ X.examSuggest = () => {
   }
   return null;
 };
+
+/* ---------------- ước tính điểm TOEIC từ các đề từng Part ---------------- */
+const QN = { 1: 6, 2: 25, 3: 39, 4: 30, 5: 30, 6: 16, 7: 54 };
+// bảng quy đổi thô (số câu đúng / 100 → điểm thang 5-495), lấy theo dải phổ biến của các bảng quy đổi công khai
+const TBL = { L: [[0, 5], [10, 5], [20, 60], [30, 110], [40, 165], [50, 220], [60, 280], [70, 335], [80, 395], [90, 450], [95, 485], [100, 495]],
+  R: [[0, 5], [10, 5], [20, 40], [30, 85], [40, 135], [50, 190], [60, 245], [70, 300], [80, 360], [90, 420], [95, 460], [100, 495]] };
+const conv = (raw, t) => { for (let i = 1; i < t.length; i++) if (raw <= t[i][0]) { const [x0, y0] = t[i - 1], [x1, y1] = t[i]; return Math.round((y0 + (y1 - y0) * (raw - x0) / (x1 - x0)) / 5) * 5; } return 495; };
+X.estimateScore = () => {
+  const acc = {};
+  [1, 2, 3, 4, 5, 6, 7].forEach(p => { const runs = X.EXAMS.filter(e => e.part === p).flatMap(e => history(e.id)).sort((a, b) => b.at - a.at); if (runs.length) acc[p] = runs[0].score / 100; });
+  const sec = parts => { const have = parts.filter(p => acc[p] != null); if (!have.length) return null;
+    const mean = have.reduce((a, p) => a + acc[p] * QN[p], 0) / have.reduce((a, p) => a + QN[p], 0);
+    return Math.round(parts.reduce((a, p) => a + (acc[p] != null ? acc[p] : mean) * QN[p], 0)); };
+  const rawL = sec([1, 2, 3, 4]), rawR = sec([5, 6, 7]);
+  if (rawL == null && rawR == null) return null;
+  const L = rawL == null ? null : conv(rawL, TBL.L), R = rawR == null ? null : conv(rawR, TBL.R);
+  return { L, R, total: L != null && R != null ? L + R : null, parts: Object.keys(acc).map(Number), full: Object.keys(acc).length === 7 };
+};
+X.scoreCard = () => {
+  const est = X.estimateScore(); if (!est) return '';
+  const miss = [1, 2, 3, 4, 5, 6, 7].filter(p => !est.parts.includes(p));
+  return `<div class="card sec score-est"><div class="row" style="align-items:flex-start;gap:18px;flex-wrap:wrap"><div><div class="kicker">Ước tính điểm TOEIC</div>
+    <div class="h1" style="margin:4px 0 0">${est.total != null ? `~${est.total}` : '—'}<span class="small muted" style="font-weight:500"> / 990</span></div></div>
+    <div class="grow small" style="min-width:220px"><div class="row" style="gap:8px;margin-bottom:6px"><span class="pill">Nghe ${est.L != null ? '~' + est.L : 'chưa có'}</span><span class="pill">Đọc ${est.R != null ? '~' + est.R : 'chưa có'}</span></div>
+    <div class="muted">Tính từ lần làm gần nhất của mỗi Part. ${miss.length ? `Chưa làm Part ${miss.join(', ')} nên phần đó được đoán theo các Part cùng kỹ năng, sai số lớn hơn.` : 'Đã đủ 7 Part.'} Đây là ước tính thô (±50 điểm), không thay điểm thi thật.</div></div></div></div>`;
+};
+
+/* ---------------- bài thi đủ 200 câu: ghép Đề 1 của 7 Part, làm liền một mạch ---------------- */
+let fullMem = {};   // bài làm + kết quả trong phiên này, để chữa từng câu (không lưu vào bộ nhớ máy vì quá nặng)
+const FULL = () => [1, 2, 3, 4, 5, 6, 7].map(p => X.EXAMS.find(e => e.part === p)).filter(Boolean);
+X.route(/^\/fulltest$/, view => {
+  const es = FULL(), s = S(), run = s.fullRun, sv = X.sessGet('/fulltest');
+  const total = es.reduce((a, e) => a + X.examItems(e).length, 0);
+  const hist = s.tests.full || [];
+  view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi từng Part</a>
+    <div class="kicker" style="margin-top:14px">Thi thử đủ bài</div><h1 class="h1">Bài thi ${total} câu, như phòng thi thật</h1>
+    <p class="lead">Ghép Đề 1 của cả 7 Part thành một bài: phần Nghe chạy liền Part 1 → 4 (khoảng 45 phút), rồi phần Đọc Part 5 → 7 dùng chung đồng hồ 75 phút. Làm xong có điểm từng Part và ước tính điểm TOEIC.</p>
+    <div class="grid g2 sec"><div class="card"><div class="h3" style="margin-bottom:8px">Chuẩn bị</div><ul class="small ex-ul">
+      <li>Dành trọn khoảng 2 tiếng, ngồi chỗ yên tĩnh, đeo tai nghe.</li><li>Phần nghe không dừng lại, không nghe lại. Giữa các Part có màn hình chờ, bấm là sang Part sau.</li>
+      <li>Phần đọc: hết 75 phút là tự nộp. Gợi ý chia giờ: Part 5 ~11 phút, Part 6 ~9 phút, Part 7 ~55 phút.</li><li>Thoát giữa chừng vẫn lưu, lần sau vào đây làm tiếp đúng Part đang dở.</li></ul></div>
+      <div class="card"><div class="h3" style="margin-bottom:8px">Các phần</div>${es.map((e, i) => `<div class="row small" style="margin:4px 0"><span class="pill ${run && run.i > i ? 'sage' : run && run.i === i ? 'gold' : ''}">Part ${e.part}</span><span class="muted">${X.examItems(e).length} câu</span>${run && run.res[i] ? `<span class="grow"></span><b>${run.res[i].correct}/${run.res[i].total}</b>` : ''}</div>`).join('')}
+      ${hist.length ? `<div class="small faint" style="margin-top:8px">Đã làm ${hist.length} lần - gần nhất ${hist[hist.length - 1].correct}/${hist[hist.length - 1].total} câu${hist[hist.length - 1].est ? `, ước tính ~${hist[hist.length - 1].est}` : ''}</div>` : ''}</div></div>
+    ${X.scoreCard()}
+    <div class="row sec">${run && run.i < es.length ? `<button class="btn pri lg" id="ft-cont">Làm tiếp Part ${es[run.i].part} ${icon('arrow')}</button><button class="btn lg" id="ft-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ft-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
+  const start = fresh => {
+    if (fresh) { X.sessDel('/fulltest'); fullMem = {}; s.fullRun = { at: Date.now(), i: 0, res: [], left: 75 * 60 }; X.save(); }
+    step(view, fresh ? null : X.sessGet('/fulltest'));
+  };
+  $('#ft-go', view).onclick = () => { if (run && run.i > 0 && !confirm('Bỏ bài đang làm dở và làm lại từ đầu?')) return; start(true); };
+  const c = $('#ft-cont', view); if (c) c.onclick = () => start(false);
+});
+function step(view, sv) {
+  const es = FULL(), run = S().fullRun;
+  if (!run) return X.go('#/fulltest');
+  if (run.i >= es.length) return fullResult(view);
+  const e = es[run.i], items = X.examItems(e);
+  if (sv && sv.exam !== e.id) sv = null;
+  runExam(view, e, items, sv, { left: LISTEN(e.part) ? null : run.left, onDone: (res, left) => {
+    run.res[run.i] = { id: e.id, part: e.part, correct: res.correct, total: res.total, ms: res.ms };
+    fullMem[run.i] = { items, res };
+    if (!LISTEN(e.part)) run.left = Math.max(0, left);
+    run.i++; run.at = Date.now(); X.save();
+    if (run.i >= es.length) return fullResult(view);
+    const nx = es[run.i], toRead = LISTEN(e.part) && !LISTEN(nx.part);
+    view.innerHTML = `<div class="page"><div class="card sec" style="max-width:620px;margin:40px auto;text-align:center">${X.xi('happy', 80)}
+      <div class="kicker" style="margin-top:8px">Xong Part ${e.part}</div><h1 class="h1">${toRead ? 'Hết phần Nghe. Sang phần Đọc' : `Tiếp theo: Part ${nx.part}`}</h1>
+      <p class="muted">${toRead ? 'Đồng hồ 75 phút cho Part 5, 6, 7 bắt đầu khi bấm. Nghỉ 1 phút, uống ngụm nước rồi làm.' : LISTEN(nx.part) ? 'Phần nghe đi liền nhau như thi thật. Bấm là audio chạy.' : `Còn ${fmtMs(run.left * 1000)} cho phần Đọc.`}</p>
+      <button class="btn pri lg" id="ft-next">Bắt đầu Part ${nx.part} ${icon('arrow')}</button></div></div>`;
+    $('#ft-next', view).onclick = () => step(view, null);
+  } });
+}
+function fullResult(view) {
+  const run = S().fullRun, es = FULL(); if (!run) return X.go('#/fulltest');
+  const L = run.res.filter(r => r.part <= 4), R = run.res.filter(r => r.part >= 5), sum = a => a.reduce((x, r) => x + r.correct, 0), tot = a => a.reduce((x, r) => x + r.total, 0);
+  const cl = (c, t) => conv(Math.round(100 * c / Math.max(1, t)), TBL.L), cr = (c, t) => conv(Math.round(100 * c / Math.max(1, t)), TBL.R);
+  const eL = cl(sum(L), tot(L)), eR = cr(sum(R), tot(R));
+  if (!run.saved) { (S().tests.full ||= []).push({ at: Date.now(), correct: sum(run.res), total: tot(run.res), score: pct(sum(run.res), tot(run.res)), ms: run.res.reduce((x, r) => x + (r.ms || 0), 0), est: eL + eR, parts: run.res.map(r => [r.part, r.correct, r.total]) }); run.saved = 1; X.save(); }
+  const mem = fullMem;
+  view.innerHTML = `<div class="page"><div class="kicker">Bài thi 200 câu</div><div class="hello">${X.xi('happy', 92)}<div><h1 class="h1">Xong cả bài rồi!</h1><p class="lead">Ngồi đủ 2 tiếng đã là một kỹ năng. Giờ xem điểm từng phần và chữa chỗ mất điểm nhiều nhất.</p></div></div>
+    <div class="card sec"><div class="res-head"><div class="big-score">${sum(run.res)}<small>/${tot(run.res)}</small></div>
+      <div><div class="row"><span class="pill syn">Ước tính ~${eL + eR}/990</span><span class="pill">Nghe ~${eL}</span><span class="pill">Đọc ~${eR}</span></div><div class="small muted" style="margin-top:8px">Ước tính thô theo bảng quy đổi phổ biến, sai số khoảng ±50 điểm.</div></div></div></div>
+    <div class="card sec"><table class="dt"><tr><th>Part</th><th class="num">Đúng</th><th class="num">Tỉ lệ</th><th></th></tr>
+      ${run.res.map((r, i) => { const pc = pct(r.correct, r.total); return `<tr><td>Part ${r.part}</td><td class="num">${r.correct}/${r.total}</td><td class="num"><span class="pill ${pc >= 80 ? 'sage' : pc >= 60 ? 'gold' : 'red'}">${pc}%</span></td><td class="num">${mem[i] ? `<button class="btn sm" data-rv="${i}">Chữa từng câu</button>` : `<a class="btn sm" href="#/errors">Sổ lỗi</a>`}</td></tr>`; }).join('')}</table>
+      <div class="small faint" style="margin-top:8px">Câu sai của cả bài đã vào Sổ lỗi. Nên chữa Part có tỉ lệ thấp nhất trước.</div></div>
+    <div class="row sec"><a class="btn pri" href="#/errors">${icon('err')} Mở Sổ lỗi</a><a class="btn" href="#/tests">Về Đề thi</a></div></div>`;
+  $$('[data-rv]', view).forEach(b => b.onclick = () => { const i = +b.dataset.rv, m = mem[i]; review(view, es[i], m.items, m.res, () => fullResult(view)); });
+}
 })();

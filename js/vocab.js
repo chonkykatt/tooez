@@ -203,6 +203,9 @@ X.route(/^\/vocab\/learn(?:\/(.+))?$/, (view, grp) => {
   const s = S(); const n = Math.max(4, Math.min(10, s.profile.newWords || 8));
   if (grp) { const [g, t] = grp.split('@'); const ws = X.VOCAB.filter(w => w.group === g && w.topic === t); const fresh = ws.filter(w => !s.words[w.id]); const pick = (fresh.length ? fresh : ws.sort((a, b) => (s.words[a.id]?.lvl || 0) - (s.words[b.id]?.lvl || 0))).slice(0, n);
     return X.vocabGame(view, shuffle(pick), { title: g, back: '#/vocab', onDone: () => {} }); }
+  // đang chơi dở một lượt từ mới (kể cả lượt mở từ một nhóm từ) thì vào lại đúng lượt đó, không bốc bộ từ mới
+  const vgOpen = Object.entries(s.resume || {}).filter(([k, v]) => v && v.kind === 'vg' && k.startsWith('/vocab/learn') && Date.now() - v.at < 7 * 864e5).sort((a, b) => b[1].at - a[1].at)[0];
+  if (vgOpen && vgOpen[0] !== '/vocab/learn') return X.go('#' + vgOpen[0]);
   const focusParts = s.profile.focus.flatMap(k => (X.PARTS.find(p => p.k === k) || { parts: [] }).parts); if (!focusParts.length) focusParts.push(1, 2, 3, 4, 5, 6, 7);
   const cand = X.VOCAB.filter(w => !s.words[w.id] && w.parts.some(p => focusParts.includes(p))).sort((a, b) => (b.freq || 0) - (a.freq || 0));
   if (!cand.length) return X.go('#/vocab');

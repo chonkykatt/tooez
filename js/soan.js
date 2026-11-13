@@ -48,7 +48,7 @@ X.route(/^\/soan(?:\/(\w+))?(?:\/([^/]+))?$/, (view, tab, arg) => {
     <div id="sd-main" class="sec"></div></div>`;
   $$('#sd-tab button', view).forEach(b => b.onclick = () => X.go('#/soan/' + b.dataset.t));
   const main = $('#sd-main', view);
-  audCheck(false);
+  audCheck(true);   // mở trang Soạn đề mà còn câu thiếu audio thì tự tạo luôn, không cần bấm
   if (tab === 'de') return examTab(main, arg);
   if (tab === 'anh') return picTab(main, arg);
   if (tab === 'tim') return searchTab(main);
@@ -354,7 +354,10 @@ let KOK = null;
 async function kokoro(prog) {
   if (KOK) return KOK;
   const m = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js');
-  KOK = await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'wasm', progress_callback: p => { if (p && p.status === 'progress' && /onnx/.test(p.file || '')) prog(`Đang tải giọng đọc ${Math.round(p.progress || 0)}% (chỉ lần đầu)`); } });
+  const pc = p => { if (p && p.status === 'progress' && /onnx/.test(p.file || '')) prog(`🔊 Đang tải giọng đọc ${Math.round(p.progress || 0)}% (chỉ lần đầu, máy sẽ nhớ cho các lần sau)`); };
+  // máy có card đồ họa (WebGPU): chưa tới 1 giây mỗi câu; không có thì chạy bằng CPU, chậm hơn nhiều (20-30 giây mỗi câu)
+  if (navigator.gpu) { try { KOK = await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'fp32', device: 'webgpu', progress_callback: pc }); return KOK; } catch (e) { console.warn('webgpu', e); } }
+  KOK = await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'wasm', progress_callback: pc });
   return KOK;
 }
 const lame = () => window.lamejs ? Promise.resolve(window.lamejs) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'js/vendor/lame-1.2.1.min.js'; s.onload = () => res(window.lamejs); s.onerror = rej; document.head.appendChild(s); });
@@ -396,7 +399,7 @@ function audBar() { let b = document.getElementById('sd-aud'); if (!b) { const m
 let audT = 0, audRounds = 0;
 function audCheck(auto) {
   clearTimeout(audT); audT = setTimeout(async () => { const b = audBar(); if (!b || audBusy) return; b.innerHTML = '🔊 Đang kiểm tra audio…'; const miss = await scanMissing(); if (audBusy) return;
-    if (!miss.length) { b.innerHTML = '🔊 Mọi câu đều đã có audio.'; return; }
+    if (!miss.length) { b.innerHTML = '🔊 Audio: mọi câu đã có file đọc. Sửa câu xong bấm Lưu là web tự tạo audio cho câu mới.'; return; }
     b.innerHTML = `🔊 Có <b>${miss.length}</b> câu chưa có audio (đang tạm đọc bằng giọng trình duyệt). <button class="btn sm pri" id="sd-mk">Tạo audio còn thiếu</button>`;
     $('#sd-mk', b).onclick = () => makeAudio(miss, b);
     if (auto) makeAudio(miss, b); }, 300);

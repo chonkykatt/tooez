@@ -208,8 +208,8 @@ X.route(/^\/about$/, view => {
     <div class="card tint intro-hero"><div class="grow"><div class="kicker">TOOEZ - Luyện TOEIC Nghe - Đọc</div>
       <h1 class="h1">Biết mình sai ở đâu,<br>luyện đúng chỗ đó.</h1>
       <p class="lead">Làm đề từng Part như thi thật, chữa từng câu sai, rồi luyện lại đến khi thành phản xạ. Có chú mèo Tooez học cùng bạn mỗi ngày.</p>
-      <div class="intro-chips"><span>${icon('check')} Miễn phí 100%</span><span>${icon('check')} Không cần tài khoản</span><span>${icon('check')} Tiến độ lưu trên máy bạn</span></div>
-      <div class="row" style="margin-top:18px;flex-wrap:wrap"><button class="btn pri lg" id="ab-start">${old ? `Học tiếp, ${esc(p.name)}` : 'Bắt đầu học'} ${icon('arrow')}</button><a class="btn lg" href="#ung-ho" id="ab-dn" data-track="intro-ung-ho">❤️ Ủng hộ TOOEZ</a></div></div>
+      <div class="intro-chips"><span>${icon('check')} Miễn phí 100%</span><span>${icon('check')} Đăng nhập Google hoặc email</span><span>${icon('check')} Tiến độ lưu trên mọi máy</span></div>
+      <div class="row" style="margin-top:18px;flex-wrap:wrap"><button class="btn pri lg" id="ab-start">${old ? `Học tiếp, ${esc(p.name)}` : 'Bắt đầu học'} ${icon('arrow')}</button><a class="btn lg" href="#ung-ho" id="ab-dn" data-track="intro-ung-ho">❤️ Ủng hộ TOOEZ</a></div>${X.cloud && X.cloud.on && !X.cloud.user() ? `<div class="small" style="margin-top:12px">Đã học ở máy khác? <a href="javascript:void 0" onclick="X.cloud.login()"><b>Đăng nhập để lấy lại tiến độ</b></a></div>` : ''}</div>
       <div class="intro-cat">${X.xi('happy', 150)}</div></div>
 
     <div class="sec">${vibeCard()}</div>

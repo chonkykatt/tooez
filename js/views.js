@@ -104,7 +104,6 @@ X.route(/^\/today$/, view => {
     <h1 class="h1">${hr < 11 ? 'Chào buổi sáng' : hr < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'}, ${esc(p.name)}!</h1>
     <p class="lead">${xp >= goal ? 'Xong mục tiêu hôm nay rồi. Làm thêm phần nào cũng là cộng thêm.' : xp ? `Còn ${goal - xp} XP nữa là xong mục tiêu hôm nay.` : 'Mấy việc nhỏ bên dưới, làm theo thứ tự là xong ngày học.'}</p></div></div>
     ${!X.TTS.hasFiles() && X.TTS.voices.length && X.TTS.quality() === 'robot' && !s.seenTips.voice ? `<div class="card tint row" id="vtip" style="margin-top:16px">${icon('vol')}<div class="grow small"><b>Giọng đọc trên máy này đang nghe như robot.</b> Mở web bằng Microsoft Edge hoặc cài giọng Premium miễn phí là nghe tự nhiên ngay.</div><a class="btn sm pri" href="#/settings">Xem cách</a><button class="btn sm ghost" id="vtip-x">Ẩn</button></div>` : ''}
-    ${backupTip(s)}
     <div class="flow-today"><span class="small muted">Cách học trên TOOEZ, lặp lại mỗi tuần:</span>${X.flowStrip(exSug && exSug.first ? 'do' : 'hoc')}</div>
     <div class="hero-today">
       <div class="card"><div class="sec-h" style="margin-bottom:4px"><h2 class="h2">Nhiệm vụ hôm nay</h2><span class="kicker">${missions.filter(m => done[m.k]).length}/${missions.length}</span></div>
@@ -622,8 +621,8 @@ X.route(/^\/settings$/, view => {
       <p class="small muted" style="margin:0 0 12px">Danh sách ảnh cần tải cho từ vựng Part 1, tên file phải đặt, và từ nào đã có ảnh.</p>
       ${/admin/.test(location.search) || (() => { try { return localStorage.getItem('tooez.admin'); } catch (e) { return 0; } })() ? `<a class="btn sm" href="#/images">${icon('scan')} Mở danh sách ảnh</a>` : ''}</div>
     <div class="card sec"><div class="h3" style="margin-bottom:6px">Dữ liệu học tập</div>
-      <p class="small muted" style="margin:0 0 12px">Tiến độ đang lưu trên trình duyệt của máy này. Sao lưu ra file để chuyển máy hoặc gửi coach xem.</p>
-      <div class="row btn-row"><button class="btn" id="st-exp">${icon('dl')} Tải file sao lưu</button><label class="btn">Khôi phục từ file<input type="file" accept=".json" id="st-imp" hidden></label><button class="btn" id="st-link">${icon('share')} Mang sang máy / trình duyệt khác</button><span class="grow"></span><button class="btn ghost" id="st-reset" style="color:var(--red)">Xóa toàn bộ tiến độ</button></div><div class="small faint" style="margin-top:8px">Đang học cùng coach? Gửi file sao lưu cho coach để coach xem Sổ lỗi và kết quả của bạn.</div></div>
+      <p class="small muted" style="margin:0 0 12px">Tiến độ được lưu lên tài khoản khi bạn đăng nhập (ô ở đầu trang này). Xóa tiến độ chỉ xóa trên máy này.</p>
+      <div class="row btn-row"><button class="btn ghost" id="st-reset" style="color:var(--red)">Xóa toàn bộ tiến độ trên máy này</button></div><div class="small faint" style="margin-top:8px">Đang học cùng coach? Gửi file sao lưu cho coach để coach xem Sổ lỗi và kết quả của bạn.</div></div>
     <div class="sec">${X.donateBox ? X.donateBox(true) : ''}</div>${X.tmNote ? X.tmNote() : ''}</div>`;
   $$('[data-p]', view).forEach(i => i.onchange = () => { p[i.dataset.p] = i.type === 'number' ? +i.value : i.value.trim(); X.save(); X.renderSide(); X.toast('Đã lưu'); });
   $$('#st-focus button', view).forEach(b => b.onclick = () => { b.classList.toggle('on'); p.focus = $$('#st-focus button.on', view).map(x => x.dataset.k); X.save(); });
@@ -643,9 +642,6 @@ X.route(/^\/settings$/, view => {
   $('#st-vw', view).onchange = e => { p.voiceW = e.target.value; X.save(); X.TTS.speak('Hello, this is the female voice.', { sex: 'W' }); };
   $('#st-vm', view).onchange = e => { p.voiceM = e.target.value; X.save(); X.TTS.speak('Hello, this is the male voice.', { sex: 'M' }); };
   $('#st-test', view).onclick = () => { const w = X.TTS.pick('W'), m = X.TTS.pick('M'); $('#st-vc', view).textContent = w ? `Nữ: ${w.name} - Nam: ${m ? m.name : '—'}` : 'Không thấy giọng tiếng Anh'; X.TTS.play([{ s: 'W', t: 'Could you send me the revised schedule by Friday?' }, { s: 'M', t: "Sure, I'll e-mail it this afternoon." }]); };
-  $('#st-exp', view).onclick = () => X.downloadBackup();
-  $('#st-link', view).onclick = () => X.shareProgress();
-  $('#st-imp', view).onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { X.mergeData(t); X.toast('Đã khôi phục: gộp bài trong file với tiến độ đang có, không mất bài nào'); X.render(); } catch (err) { X.toast(err.message); } }); };
   $('#st-reset', view).onclick = () => { if (confirm('Xóa toàn bộ tiến độ trên máy này? Không hoàn tác được.')) { X.resetAll(); location.hash = '#/today'; location.reload(); } };
 });
 })();

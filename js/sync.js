@@ -95,5 +95,5 @@
       try { location.href = await X.progressLink(); } catch (e) { location.href = MAIN_URL; }
     };
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+  // đã có đăng nhập lưu tiến độ (js/cloud.js) nên không hiện dải nhắc chuyển tiến độ nữa; chỉ giữ trang nhận link cũ #/nhan
 })();

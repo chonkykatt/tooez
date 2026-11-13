@@ -1460,3 +1460,17 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .cl-or::before,.cl-or::after{content:"";flex:1;border-top:1px solid var(--line)}
 @media (max-width:640px){.login-hero .lh-ic{display:none}.login-hero .lh-btns{width:100%}.login-hero .lh-btns .btn{flex:1;justify-content:center}}
 @media (max-width:640px){.login-hero .lh-btns{flex-direction:column;align-items:stretch}.login-hero .lh-btns .btn{width:100%}}
+/* đăng nhập gọn: 1 nút + menu chọn cách đăng nhập */
+.lg-dd{position:relative;display:inline-block}
+.lg-dd>summary{list-style:none;cursor:pointer;white-space:nowrap}
+.lg-dd>summary::-webkit-details-marker{display:none}
+.lg-dd .lg-car{font-size:11px;opacity:.85}
+.lg-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:var(--card);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14);padding:6px;min-width:220px;display:grid}
+.lg-dd.right .lg-menu,.lg-corner .lg-menu,.acct .lg-menu{left:auto;right:0}
+.lg-menu button{border:0;background:none;text-align:left;padding:10px 12px;border-radius:8px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;color:var(--ink)}
+.lg-menu button:hover{background:var(--paper-dim)}
+.lg-dd.full{display:block}.lg-dd.full>summary{width:100%;justify-content:center}.lg-dd.full .lg-menu{right:0}
+.acct-side.off{border:0;background:none;padding:0;margin:12px 4px 4px}
+.lg-corner{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.hello .lg-corner.in-hello{margin-left:auto;align-self:flex-start}
+@media (max-width:980px){.hello .lg-corner.in-hello{display:none}}

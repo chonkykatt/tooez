@@ -150,7 +150,7 @@ const stLine = () => st.state === 'sync' ? 'Đang lưu…' : st.state === 'err' 
 const hadSession = (() => { try { return !!localStorage.getItem('tooez.auth'); } catch (e) { return false; } })();
 const ini = () => esc(((user && ((user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email)) || '?').trim()[0].toUpperCase());
 const avatar = cls => { const pic = user && user.user_metadata && user.user_metadata.avatar_url; return `<span class="acct-av ${cls || ''}">${pic ? `<img src="${esc(pic)}" alt="" referrerpolicy="no-referrer">` : ini()}</span>`; };
-const btns = (later) => `<div class="lh-btns"><button class="btn pri" data-cl="${APP ? 'email' : 'google'}">${APP ? 'Đăng nhập bằng email' : 'Tiếp tục với Google'}</button><button class="btn" data-cl="${APP ? 'google' : 'email'}">${APP ? 'Dùng Google' : 'Dùng email'}</button>${later ? '<button class="btn ghost sm" data-cl="later">Để sau</button>' : ''}</div>`;
+const dd = (label, cls) => `<details class="lg-dd ${cls || ''}"><summary class="btn pri sm">${label} <span class="lg-car">▾</span></summary><div class="lg-menu"><button data-cl="google">Đăng nhập bằng Google</button><button data-cl="email">Đăng nhập bằng email</button></div></details>`;
 function accountCard() {
   if (!ready && hadSession) return `<div class="card sec acct" id="cl-card"><div class="h3">Tài khoản</div><div class="small muted">Đang đăng nhập…</div></div>`;
   if (user) return `<div class="card sec acct" id="cl-card"><div class="row" style="gap:14px;flex-wrap:wrap">${avatar('lg')}<div class="grow" style="min-width:200px"><div class="h3">Tiến độ đang được lưu trên tài khoản</div>
@@ -158,14 +158,11 @@ function accountCard() {
   return loginHero('cl-card');
 }
 function loginHero(id) {
-  return `<div class="card sec login-hero" id="${id}"><div class="lh-ic">${X.xi('happy', 64, 'static')}</div><div class="grow" style="min-width:220px">
-    <div class="kicker syn">Chưa đăng nhập</div><div class="h2" style="margin:2px 0 6px">Đăng nhập để lưu tiến độ</div>
-    <div class="small muted">${APP ? `Bạn đang mở trong ${APP}: tiến độ ở đây rất dễ bị xóa. Đăng nhập bằng email ngay tại đây là bài làm được giữ lại trên tài khoản.` : 'Đăng nhập một lần, học trên điện thoại hay máy tính đều giữ nguyên bài đã làm. Không đăng nhập thì tiến độ chỉ nằm trong trình duyệt này, đổi máy hay xóa dữ liệu là mất.'}</div></div>
-    ${btns(id === 'cl-hero')}</div>`;
+  return `<div class="card sec acct row" id="${id}" style="gap:12px;flex-wrap:wrap"><div class="grow"><div class="h3">Tài khoản</div><div class="small muted">Chưa đăng nhập</div></div>${dd('Đăng nhập để lưu tiến độ')}</div>`;
 }
 function bindCard(root) {
   root.querySelectorAll('[data-cl]').forEach(b => b.onclick = () => {
-    const k = b.dataset.cl;
+    const k = b.dataset.cl; const d = b.closest('details'); if (d) d.open = false;
     if (k === 'google') return google();
     if (k === 'email') return login();
     if (k === 'later') { try { sessionStorage.setItem('tooez.later', '1'); } catch (e) {} const h = $('#cl-hero'); if (h) h.remove(); }
@@ -185,8 +182,9 @@ X.afterRender = (h, view) => {
   if (h === '/settings') { const h1 = page.querySelector('h1'); if (h1) { h1.insertAdjacentHTML('afterend', accountCard()); bindCard(page); } }
   // đầu trang Hôm nay (và màn chào lần đầu): khung đăng nhập to, nằm trên cùng
   if (h === '/today' && !user && !(hadSession && !ready)) {
-    if (page.querySelector('#ob-name')) { page.insertAdjacentHTML('afterbegin', `<div class="card sec login-hero" id="cl-hero" style="margin-top:0"><div class="grow" style="min-width:220px"><div class="h3">Đã từng học TOOEZ ở máy khác?</div><div class="small muted">Đăng nhập để lấy lại toàn bộ tiến độ, khỏi phải điền lại từ đầu. Học sinh mới cũng nên đăng nhập luôn để không mất bài.</div></div>${btns(false)}</div>`); bindCard(page); }
-    else if (!later()) { page.insertAdjacentHTML('afterbegin', loginHero('cl-hero')); bindCard(page); }
+    const hello = page.querySelector('.hello');
+    if (page.querySelector('#ob-name')) { page.insertAdjacentHTML('afterbegin', `<div class="lg-corner" id="cl-hero"><span class="small muted">Đã học ở máy khác?</span>${dd('Đăng nhập')}</div>`); bindCard(page); }
+    else if (hello) { hello.insertAdjacentHTML('beforeend', `<div class="lg-corner in-hello" id="cl-hero">${dd('Đăng nhập để lưu tiến độ')}</div>`); bindCard(page); }
   }
 };
 // menu bên trái: ô tài khoản ngay dưới logo; điện thoại: nút Đăng nhập trên thanh trên cùng
@@ -197,16 +195,17 @@ X.renderSide = (...a) => {
   if (brand) brand.insertAdjacentHTML('afterend', user
     ? `<a class="acct-side on" href="#/settings" title="Tài khoản">${avatar()}<span class="grow"><b>${esc((user.email || '').split('@')[0])}</b><small><i class="dot ${st.state === 'err' ? 'bad' : ''}"></i>${st.state === 'err' ? 'Chưa lưu được' : st.state === 'sync' ? 'Đang lưu…' : 'Tiến độ đã lưu'}</small></span></a>`
     : hadSession && !ready ? `<div class="acct-side"><small class="muted">Đang đăng nhập…</small></div>`
-    : `<div class="acct-side off"><b>Lưu tiến độ</b><small>Chưa đăng nhập: đổi máy là mất bài</small><div class="as-btns"><button class="btn pri sm" data-cl="${APP ? 'email' : 'google'}">${APP ? 'Email' : 'Google'}</button><button class="btn sm" data-cl="${APP ? 'google' : 'email'}">${APP ? 'Google' : 'Email'}</button></div></div>`);
+    : `<div class="acct-side off">${dd('Đăng nhập để lưu tiến độ', 'full')}</div>`);
   const side = document.querySelector('#side'); if (side) bindCard(side);
   const tb = document.querySelector('.topbar');
   if (tb) {
     let b = tb.querySelector('#tb-acct'); if (!b) { b = document.createElement('span'); b.id = 'tb-acct'; tb.appendChild(b); }
-    b.innerHTML = user ? `<a href="#/settings" title="Tài khoản">${avatar('sm')}</a>` : hadSession && !ready ? '' : `<button class="btn pri sm" data-cl="email">Đăng nhập</button>`;
+    b.innerHTML = user ? `<a href="#/settings" title="Tài khoản">${avatar('sm')}</a>` : hadSession && !ready ? '' : dd('Đăng nhập', 'right');
     bindCard(b);
   }
 };
 
+document.addEventListener('click', e => { document.querySelectorAll('details.lg-dd[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
 X.cloud = { on: true, user: () => user, google, login, signOut, syncNow };
 
 /* ---------- khởi động ---------- */

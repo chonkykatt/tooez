@@ -28,6 +28,14 @@
   // Ảnh có câu mẫu trong data/imgex.js thì chắc chắn có file: đánh dấu sẵn, không cần tải thử
   X.imgAssume = () => (X.VOCAB || []).forEach(w => { if (cache[w.id] === undefined && X.hasImgSlot(w) && X.imgEx(w)) cache[w.id] = X.imgEx(w).img || 'img/p1/' + X.imgSlug(w) + '.jpg'; });
   X.imgForget = w => { delete cache[w.id]; };
+  // ảnh / câu tả vừa đổi trên trang Soạn đề (kể cả khi bản sửa tải về sau lúc mở web): cập nhật từ vựng và dựng lại câu Part 1 dạng tranh
+  X.picSync = slugs => {
+    (X.VOCAB || []).forEach(w => { if (!X.hasImgSlot(w) || !slugs.includes(X.imgSlug(w))) return; const e = X.imgEx(w); delete cache[w.id];
+      const gen = w.exGeneric || w.ex || []; if (!w.exGeneric) w.exGeneric = gen;
+      if (e) { w.ex = [e.ex, ...gen.filter(x => x !== e.ex)]; w.exVi = e.vi; w.exCtx = e.ctx || ''; } else { w.ex = gen.slice(); delete w.exVi; } });
+    X.imgAssume();
+    if (X.rebuildP1Pic) X.rebuildP1Pic();
+  };
   // <div data-wimg="ID"></div> → ảnh nếu có
   X.imgFill = root => (root || document).querySelectorAll('[data-wimg]').forEach(el => {
     const w = X.wordById[el.dataset.wimg]; if (!w) return;

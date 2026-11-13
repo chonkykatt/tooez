@@ -340,6 +340,7 @@ async function scanMissing() {
   const T = X.TTS, o = new Map();
   const add = (s, t) => { if (!t || !/[A-Za-z]/.test(t)) return; splitL(t).forEach(x => { if (!T.fileFor(s, x)) o.set(s + '|' + x, { role: s, text: x, key: T.key(s, x) }); }); };
   allItems().forEach(i => (i.audio || []).forEach(a => add(a.s, a.t)));
+  CT().rows().filter(r => r.kind === 'pic').forEach(r => { const w = X.VOCAB.find(v => X.imgSlug(v) === r.id); if (w && w.ex && w.ex[0]) add('W', w.ex[0]); });   // nút loa ở trang từ vựng
   X.EXAMS.filter(e => e.part <= 4).forEach(e => { const its = X.examItems(e);
     if (e.part >= 3) { let k = 0; while (k < its.length) { const set = its[k].set; let j = k; while (j + 1 < its.length && its[j + 1].set === set) j++; add('N', `Questions ${e.start + k} through ${e.start + j} refer to the following ${e.part === 3 ? 'conversation' : 'talk'}.`); k = j + 1; }
       its.forEach((it, k) => add('N', `Number ${e.start + k}. ${it.prompt}`)); } else its.forEach((it, k) => add('N', `Number ${e.start + k}.`)); });

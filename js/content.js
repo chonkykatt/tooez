@@ -57,17 +57,20 @@
   }
   const DONE = new Set();   // mỗi bản sửa chỉ áp dụng 1 lần (dữ liệu nạp muộn thì lần sau mới áp được)
   function apply(list) {
+    const pics = [];
     const run = r => { const sig = r.kind + '|' + r.id + '|' + JSON.stringify(r.data); if (DONE.has(sig)) return; let ok = true;
       try { if (r.kind === 'aud') { (window.TOOEZ_AUD || (window.TOOEZ_AUD = {}))[r.id] = r.data.u; return DONE.add(sig); } if (r.kind === 'item') applyItem(r.id, r.data); else if (r.kind === 'pic') applyPic(r.id, r.data); else if (r.kind === 'exam') applyExam(r.id, r.data); else if (r.kind === 'add') ok = applyAdd(r.id, r.data); else if (r.kind === 'obj') ok = applyObj(r.id, r.data); } catch (e) { ok = false; console.warn('content', r.id, e); }
-      if (ok) DONE.add(sig); };
+      if (ok) { DONE.add(sig); if (r.kind === 'pic') pics.push(r.id); } };
     const hide = r => r.kind === 'obj' && r.data && r.data._hidden;
     list.filter(r => !hide(r)).forEach(run);
     // ẩn mục: làm sau cùng, từ cuối mảng lên để không lệch chỗ
     list.filter(hide).sort((a, b) => (+(b.id.split('.').pop()) || 0) - (+(a.id.split('.').pop()) || 0)).forEach(run);
+    if (pics.length && window.X && X.picSync && X.VOCAB) X.picSync(pics);   // dữ liệu đã dựng xong rồi mới tải được bản sửa ảnh → cập nhật lại
   }
   apply(rows);
   window.TOOEZ_CONTENT = {
-    rows: () => rows, orig: id => ORIG[id], apply, resolve: p => X_resolve(p), origIndex: (a, i) => toOrig(a, i),
+    rows: () => rows, orig: id => ORIG[id], apply,
+    reapply: test => rows.filter(r => r.kind === 'item' && test(r.id)).forEach(r => applyItem(r.id, r.data)), resolve: p => X_resolve(p), origIndex: (a, i) => toOrig(a, i),
     find: id => rows.find(r => r.id === id),
     // tải bản mới nhất (ai cũng đọc được), có thay đổi thì áp dụng và vẽ lại trang
     refresh: async () => {

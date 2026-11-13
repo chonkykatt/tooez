@@ -237,6 +237,8 @@ X.buildP1Pic = () => { if (X.p1PicCount != null) return X.p1PicCount; if (!X.img
   return (X.p1PicCount = items.length);
 };
 
+X.rebuildP1Pic = () => { if (X.p1PicCount == null) return; for (let i = X.BANK.length - 1; i >= 0; i--) if (X.BANK[i].src === 'p1pic') X.BANK.splice(i, 1);
+  X.p1PicCount = null; X.buildP1Pic(); window.TOOEZ_CONTENT && window.TOOEZ_CONTENT.reapply && window.TOOEZ_CONTENT.reapply(id => /^p1pic-/.test(id)); };
 X.route(/^\/lab$/, view => {
   const s = S();
   const labs = Object.values(X.LABS).filter(l => !LAB_HIDE.has(l.id) && (l.kind === 'pic' || sizeOf(l) > 0));

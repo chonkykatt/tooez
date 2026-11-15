@@ -207,7 +207,7 @@ function searchTab(main) {
 /* ================= Sửa mọi dạng bài: form tự sinh theo dữ liệu ================= */
 const enc = s => encodeURIComponent(s);
 const R = p => CT().resolve(p);
-const LBL = { q: 'Câu hỏi / đề', a: 'Đáp án', o: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', opts: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', options: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', answer: 'Đáp án đúng (0 = A, 1 = B…)',
+const LBL = { cloze: 'Câu đoán từ (___ là chỗ trống)', ans: 'Từ điền vào chỗ trống (đúng dạng trong câu)', pos: 'Loại từ', uk: 'Phiên âm UK', us: 'Phiên âm US', pic: 'Hình minh hoạ: mỗi dòng "emoji + chú thích"', forms: 'Dạng từ: mỗi dòng "từ (loại) - nghĩa"', col: 'Cụm từ: mỗi dòng "cụm - nghĩa"', cmp: 'Phân biệt: mỗi dòng "từ - giải thích" (dòng đầu là từ đang học)', scene: 'Bối cảnh tình huống', talk: 'Hội thoại (M = nam, W = nữ)', q: 'Câu hỏi / đề', a: 'Đáp án', o: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', opts: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', options: 'Các lựa chọn (mỗi dòng 1 lựa chọn)', answer: 'Đáp án đúng (0 = A, 1 = B…)',
   why: 'Giải thích', explain: 'Giải thích', reveal: 'Giải thích sau khi trả lời', rule: 'Quy tắc', h: 'Tiêu đề thẻ', b: 'Nội dung', big: 'Dòng chữ to', t: 'Tiêu đề / nội dung', title: 'Tiêu đề', vi: 'Nghĩa tiếng Việt',
   w: 'Từ', ipa: 'Phiên âm', def: 'Định nghĩa tiếng Anh', ex: 'Câu ví dụ (mỗi dòng 1 câu)', goal: 'Mục tiêu', hook: 'Câu móc nhớ', prompt: 'Đề', en: 'Câu tiếng Anh', mark: 'Câu có đánh dấu (HTML)', tag: 'Nhãn', d: 'Hội thoại',
   same: 'Cùng nghĩa? (true/false)', lines: 'Các dòng (mỗi dòng 1 câu)', time: 'Thời gian (giây)', desc: 'Mô tả', pair: 'Cặp từ', distinction: 'Phân biệt', example: 'Ví dụ', type: 'Loại', say: 'Tooez nói', ok: 'Khi làm đúng', no: 'Khi làm sai', fast: 'Mẹo nhanh', limit: 'Khi nào không đúng', try: 'Thử ngay', g: 'Nhóm / bảng', rows: 'Các dòng bảng', html: 'Nội dung (HTML)', name: 'Tên' };
@@ -324,6 +324,7 @@ function otherTab(main) {
   main.innerHTML = `<div class="sd-list">${card('#/soan/arr/' + enc('CONF'), 'Cặp từ dễ nhầm', (window.CONF || []).length + ' cặp')}
     ${(window.AHA || []).map((g, i) => card('#/soan/arr/' + enc(`AHA|${i}.items`), 'Aha! - ' + g.g, (g.items || []).length + ' thẻ')).join('')}
     ${(window.NGOP_SETS || []).map((s, i) => card('#/soan/obj/' + enc(`NGOP_SETS|${i}`), 'Bị ngộp Part 7 - ' + s.title, 'đoạn văn, câu hỏi')).join('')}
+    ${card('#/soan/arr/' + enc('REEL'), 'Nhớ 1 phát (học từ 10 bước như video)', (window.REEL || []).length + ' từ')}
     ${card('#/soan/arr/' + enc('RICH_LIST'), 'Từ học sâu 13 bước', 'xem trong Từ vựng')}</div>`;
   main.querySelector('[href$="RICH_LIST"]').remove();
 }
@@ -341,6 +342,7 @@ async function scanMissing() {
   const add = (s, t) => { if (!t || !/[A-Za-z]/.test(t)) return; splitL(t).forEach(x => { if (!T.fileFor(s, x)) o.set(s + '|' + x, { role: s, text: x, key: T.key(s, x) }); }); };
   allItems().forEach(i => (i.audio || []).forEach(a => add(a.s, a.t)));
   CT().rows().filter(r => r.kind === 'pic').forEach(r => { const w = X.VOCAB.find(v => X.imgSlug(v) === r.id); if (w && w.ex && w.ex[0]) add('W', w.ex[0]); });   // nút loa ở trang từ vựng
+  if (X.reelLines && CT().rows().some(r => /^REEL\b/.test(r.id))) (window.REEL || []).forEach(w => { try { X.reelLines(w).en.forEach(([s, t]) => add(s, t)); } catch (e) {} });   // Nhớ 1 phát: chỉ quét khi đã sửa
   X.EXAMS.filter(e => e.part <= 4).forEach(e => { const its = X.examItems(e);
     if (e.part >= 3) { let k = 0; while (k < its.length) { const set = its[k].set; let j = k; while (j + 1 < its.length && its[j + 1].set === set) j++; add('N', `Questions ${e.start + k} through ${e.start + j} refer to the following ${e.part === 3 ? 'conversation' : 'talk'}.`); k = j + 1; }
       its.forEach((it, k) => add('N', `Number ${e.start + k}. ${it.prompt}`)); } else its.forEach((it, k) => add('N', `Number ${e.start + k}.`)); });

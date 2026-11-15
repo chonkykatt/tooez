@@ -398,7 +398,7 @@ TTS.files = (role, text) => { const parts = splitLetter(text), srcs = parts.map(
 TTS.edgeNatural = () => TTS.voices.some(v => /Microsoft/i.test(v.name) && /Natural/i.test(v.name));
 TTS.useVoice = () => { const m = S.profile.voiceSrc || 'auto'; return m === 'browser' ? TTS.voices.length > 0 : m === 'files' ? false : TTS.edgeNatural(); };
 TTS.speak = async (text, opt = {}) => {
-  const role = opt.role || (opt.sex === 'M' ? 'M' : 'W'), srcs = TTS.useVoice() ? null : TTS.files(role, text);
+  const role = opt.role || (opt.sex === 'M' ? 'M' : 'W'), srcs = TTS.useVoice() && !opt.forceFile ? null : TTS.files(role, text);
   if (srcs) { const tk = TTS.token, rate = (opt.rate || 1) * (S.profile.rate || 1);
     for (let i = 0; i < srcs.length; i++) { if (tk !== TTS.token) return; const ok = await playSrc(srcs[i], rate); if (tk !== TTS.token || ok === 'stop') return; if (!ok) return TTS.speakVoice(text, opt); if (i < srcs.length - 1) await new Promise(r => setTimeout(r, 150)); }
     return; }
@@ -406,6 +406,7 @@ TTS.speak = async (text, opt = {}) => {
   return TTS.speakVoice(text, opt);
 };
 TTS.speakVoice = (text, opt = {}) => new Promise(res => {
+  if (opt.role === 'VI') return setTimeout(res, 900 + String(text).length * 45);   // không có giọng Việt thì không đọc bằng giọng tiếng Anh
   if (TTS.missing()) { if (!('speechSynthesis' in window) || TTS.voicesTried) TTS.warn(); else setTimeout(() => { TTS.voicesTried = true; loadVoices(); if (TTS.missing()) TTS.warn(); }, 1200); return setTimeout(res, 600); }
   const tk = TTS.token, v = opt.voice || TTS.pick(opt.sex || 'W', opt.lang);
   let done = false, tries = 0, wd = 0; const fin = () => { if (!done) { done = true; clearTimeout(wd); res(); } };

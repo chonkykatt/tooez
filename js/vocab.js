@@ -19,7 +19,7 @@ X.route(/^\/vocab$/, view => {
     <div class="grid g3 sec">
       <div class="card"><div class="stat"><div class="v">${due}</div><div class="l">từ đến hạn ôn</div></div><a class="btn ${due ? 'pri' : ''} sm" style="margin-top:12px" href="#/vocab/review">${icon('refresh')} Ôn ngay</a></div>
       <div class="card"><div class="stat"><div class="v">${learned}</div><div class="l">từ đã học - ${Object.values(s.words).filter(w => w.lvl >= 3).length} nhớ chủ động</div></div><a class="btn ${due ? '' : 'pri'} sm" style="margin-top:12px" href="#/vocab/learn">${icon('plus')} Học ${s.profile.newWords} từ mới</a></div>
-      <a class="card link ink" id="vc-deep" href="#/vocab/deep/${((X.VOCAB.filter(w => w.star)[Math.floor(Math.random() * Math.max(1, X.VOCAB.filter(w => w.star).length))] || X.VOCAB[0] || {}).id || '')}"><div class="kicker" style="color:#9A9DA8">Học sâu một từ</div><div class="h2" style="margin:6px 0">Thử với một từ ngẫu nhiên</div><div class="small muted">Mỗi từ có trang học riêng: đoán nghĩa, nghe, nhớ lại, đo tốc độ. Bấm vào thẻ này, hoặc bấm vào bất kỳ từ nào trong kho để học sâu từ đó.</div></a>
+      <a class="card link ink" id="vc-reel" href="#/vocab/nho"><div class="kicker" style="color:var(--sun)">Mới · Nhớ 1 phát</div><div class="h2" style="margin:6px 0">Học từ như xem video 1 phút</div><div class="small muted" style="color:#D9D4FF">10 bước tự chạy, có giọng đọc: đoán từ, phát âm Anh - Mỹ, nghĩa, ví dụ, dạng từ, cụm từ, phân biệt, tình huống thật, nhớ lại.</div></a>
     </div>
     <div class="sec-h sec"><h2 class="h2">Học theo nhóm nghĩa</h2><span class="small muted">Mỗi nhóm 4-25 từ cùng chủ đề, học như một game 6 vòng</span></div>
     <div class="seg" id="vgp">${X.PARTS.map(p => `<button data-v="${p.k}">${p.n}</button>`).join('')}</div>
@@ -72,6 +72,7 @@ X.route(/^\/vocab\/w\/([\w-]+)$/, (view, id) => {
   const rel = X.VOCAB.filter(x => x.id !== w.id && x.topics.some(t => w.topics.includes(t))).slice(0, 14);
   view.innerHTML = `<div class="page"><a href="#/vocab" class="small">${icon('back')} Kho từ vựng</a>
     <div class="word-hero" style="margin-top:18px"><div class="hw">${esc(w.w)}</div>${sayBtn(speakable(w))}${w.star ? '<span class="pill gold">★ hay gặp</span>' : ''}${w.parts.map(p => `<span class="pill">Part ${p}</span>`).join('')}</div>
+    ${(window.REEL || []).some(x => x.w.toLowerCase() === w.w.toLowerCase()) ? `<a class="btn pri sm" style="margin:10px 0 4px" href="#/vocab/nho/${esc((window.REEL || []).find(x => x.w.toLowerCase() === w.w.toLowerCase()).id)}">${icon('play')} Nhớ 1 phát: học từ này trong 1 phút</a>` : ''}
     <div data-wimg="${w.id}" class="wimg hero"></div>${w.exVi ? `<div class="wimg-cap small"><i>${esc(w.ex[0])}</i> - ${esc(w.exVi)}${w.exCtx ? `<div class="muted">${esc(w.exCtx)}</div>` : ''}</div>` : ''}
     ${w.ipa ? `<div class="ipa" style="margin-top:8px">${typeof w.ipa === 'string' ? esc(w.ipa) : `US ${esc(w.ipa.us)} - UK ${esc(w.ipa.uk)}`}${w.pos ? ` - ${esc(w.pos)}` : ''}${w.cefr ? ` - ${esc(w.cefr)}` : ''}</div>` : ''}
     ${w.def ? `<div class="muted" style="margin-top:6px">${esc(w.def)}</div>` : ''}

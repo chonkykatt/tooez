@@ -1564,3 +1564,4 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .rl-yg-legal{font-size:11px;color:#8F89B5;margin-top:4px}.rl-yg-legal a{color:#B9B2E8}
 .rl-add .inp{flex:1;min-width:180px}
 .rl-w{position:relative}.rl-del{position:absolute;top:6px;right:6px;border:0;background:none;color:var(--ink-faint);font-size:14px;padding:4px 6px;border-radius:8px}.rl-del:hover{background:var(--red-soft);color:var(--red)}
+.rl .rl-yg-open{margin-top:6px;align-self:center;background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}

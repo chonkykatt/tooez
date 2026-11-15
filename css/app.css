@@ -1558,3 +1558,9 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .rl .btn{color:var(--ink)}.rl .btn.pri{color:#fff}.rl .btn.ghost{color:#fff;border-color:rgba(255,255,255,.4)}
 @keyframes rlPop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
 @media (max-width:600px){.rl-wrap{padding:0}.rl{border-radius:0;height:calc(100dvh - 56px);max-height:none;min-height:0;box-shadow:none}.rl-word{font-size:40px}.rl-big{font-size:26px}}
+.rl-seg{align-self:center;background:rgba(255,255,255,.1)}.rl-seg button{color:#fff}.rl-seg button.on{background:var(--syn);color:#fff}
+.rl-yg{width:100%;min-height:230px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.06)}
+.rl-yg iframe{max-width:100%}
+.rl-yg-legal{font-size:11px;color:#8F89B5;margin-top:4px}.rl-yg-legal a{color:#B9B2E8}
+.rl-add .inp{flex:1;min-width:180px}
+.rl-w{position:relative}.rl-del{position:absolute;top:6px;right:6px;border:0;background:none;color:var(--ink-faint);font-size:14px;padding:4px 6px;border-radius:8px}.rl-del:hover{background:var(--red-soft);color:var(--red)}

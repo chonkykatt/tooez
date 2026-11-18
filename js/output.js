@@ -86,7 +86,7 @@ const listenWhisper = async ui => {
   let modelReady = false; const mp = loadASR(p => { if (!modelReady) ui.status(`Đang tải bộ nghe giọng nói (lần đầu, ~40 MB): ${p}%`); });
   let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
   catch (e) { throw new Error(e && e.name === 'NotAllowedError' ? 'not-allowed' : 'audio-capture'); }
-  const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(), an = ac.createAnalyser(); an.fftSize = 1024; ac.createMediaStreamSource(stream).connect(an);
+  const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(); try { if (ac.state === 'suspended') await ac.resume(); } catch (e) {} const an = ac.createAnalyser(); an.fftSize = 1024; ac.createMediaStreamSource(stream).connect(an);
   const mr = new MediaRecorder(stream), chunks = []; mr.ondataavailable = e => e.data.size && chunks.push(e.data);
   const buf = new Float32Array(an.fftSize); let spoke = false, quietSince = 0, raf = 0; const t0 = Date.now();
   const blob = await new Promise(res => {

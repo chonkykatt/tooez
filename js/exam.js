@@ -48,7 +48,7 @@ const estMin = (e, its) => Math.max(1, Math.round(its.length * (e.part === 1 ? 3
 /* ---------------- giới thiệu một đề ---------------- */
 X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
   const e = exById(id); if (!e) return X.go('#/tests');
-  const items = X.examItems(e), g = G(e.part), sv = X.sessGet('/exam/' + id), h = history(id);
+  const items = X.examItems(e), g = G(e.part), sv = svFits(X.sessGet('/exam/' + id), items), h = history(id);
   view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi</a>
     <div class="kicker" style="margin-top:14px">Part ${e.part} - ${LISTEN(e.part) ? 'Nghe' : 'Đọc'}</div><h1 class="h1">${esc(X.examTitle(id))}</h1>
     <div class="grid g2 sec">
@@ -65,14 +65,21 @@ X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
 });
 
 /* ---------------- làm bài ---------------- */
+// bài làm dở chỉ dùng lại được khi đề vẫn y nguyên (admin thêm / ẩn câu trên trang Soạn đề sẽ làm lệch đáp án sang câu khác)
+function svFits(sv, items) {
+  if (!sv) return null;
+  const ok = Array.isArray(sv.ans) && sv.ans.length === items.length && (!sv.ids || sv.ids.join('|') === items.map(it => it.id).join('|')) && (sv.pi || 0) < pagesOf(items).length;
+  return ok ? sv : null;
+}
 function runExam(view, e, items, sv, chain) {
+  if (sv && !svFits(sv, items)) { sv = null; X.toast('Đề đã được cập nhật nên bài làm dở không dùng tiếp được, làm lại từ đầu nhé.', 4000); }
   const listen = LISTEN(e.part), pages = pagesOf(items), N = k => e.start + k;
   const st = { ans: items.map(() => null), conf: items.map(() => null), ms: items.map(() => 0), pi: 0, left: (e.time || 0) * 60, t0: Date.now(), tok: 0, paused: false, done: false, shown: Date.now() };
   if (chain && !listen && chain.left != null) st.left = chain.left;
   if (sv) Object.assign(st, { ans: sv.ans, conf: sv.conf, ms: sv.ms || st.ms, pi: sv.pi || 0, left: sv.left ?? st.left, t0: Date.now() - (sv.elapsed || 0) });
   const textMode = listen && TTS.missing();
   const sKey = chain ? '/fulltest' : '/exam/' + e.id;
-  const persist = () => { if (!st.done) X.sessSet(sKey, { kind: 'exam', exam: e.id, title: chain ? `Bài thi 200 câu - Part ${e.part}` : X.examTitle(e.id), n: items.length, i: pages[st.pi].idx[0], k: pages[st.pi].idx[0], num: e.start + pages[st.pi].idx[0], last: e.start + items.length - 1, pi: st.pi, ans: st.ans, conf: st.conf, ms: st.ms, left: st.left, elapsed: Date.now() - st.t0 }); };
+  const persist = () => { if (!st.done) X.sessSet(sKey, { kind: 'exam', exam: e.id, title: chain ? `Bài thi 200 câu - Part ${e.part}` : X.examTitle(e.id), n: items.length, i: pages[st.pi].idx[0], k: pages[st.pi].idx[0], num: e.start + pages[st.pi].idx[0], last: e.start + items.length - 1, pi: st.pi, ids: items.map(it => it.id), ans: st.ans, conf: st.conf, ms: st.ms, left: st.left, elapsed: Date.now() - st.t0 }); };
   let timer = null;
   const stamp = () => { const now = Date.now(), p = pages[st.pi]; if (p) p.idx.forEach(k => { st.ms[k] += (now - st.shown) / p.idx.length; }); st.shown = now; };
   const stopAll = () => { st.tok++; clearInterval(timer); TTS.stop(); };

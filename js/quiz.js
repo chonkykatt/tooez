@@ -93,7 +93,7 @@ X.runQuiz = (view, o) => {
     const card = `<div class="q-card">
       ${it.part ? `<div class="row" style="margin-bottom:6px"><span class="pill">${X.partOf(it.part).n}</span>${it.skill ? `<span class="pill syn">${esc(it.skill)}</span>` : ''}${set && set.length > 1 ? `<span class="pill">${set.indexOf(it) + 1}/${set.length} trong bài</span>` : ''}</div>` : ''}
       ${audioBox(it)}
-      ${it.img ? `<div class="wimg on lab-pic q-pic"><img src="${it.img}" alt=""></div>` : it.context && !(it.hideq === 'context' && !st.showText && !reveal) ? `<div class="q-ctx">${esc(it.context)}</div>` : ''}
+      ${it.img ? `<div class="wimg on lab-pic q-pic"><img src="${esc(it.img)}" alt=""></div>` : it.context && !(it.hideq === 'context' && !st.showText && !reveal) ? `<div class="q-ctx">${esc(it.context)}</div>` : ''}
       ${showPrompt ? `<div class="q-prompt">${(it.kind === 'p2' || it.hideq === 'prompt' && it.part === 2) && reveal ? X.hiQ(it.prompt) : esc(it.prompt)}</div>${(it.kind === 'p2' || it.hideq === 'prompt' && it.part === 2) && reveal ? X.hiLegend : ''}${(reveal || mode === 'practice' && checked) && it.vi ? `<div class="q-vi">${esc(it.vi)}</div>` : ''}` : `<div class="q-prompt muted">${esc(it.ask || 'Nghe câu hỏi, chọn câu trả lời đúng.')}</div>`}
       <div class="opts">${opts}</div>
       ${confRow}${fb}${actions}

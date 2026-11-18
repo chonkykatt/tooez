@@ -14,4 +14,5 @@
     if (f.startsWith('rm:')) { const box = im.closest(f.slice(3)); if (box) box.remove(); } else if (f === 'rmparent') { if (im.parentNode) im.parentNode.remove(); } else if (f === 'noimg') { if (im.parentNode) im.parentNode.classList.add('noimg'); im.remove(); } }, true);
   document.addEventListener('click', e => { const h = e.target.closest && e.target.closest('[data-hint]'); if (h) { h.outerHTML = h.dataset.h; return; }
     const l = e.target.closest && e.target.closest('[data-cl-login]'); if (l) { e.preventDefault(); X.cloud && X.cloud.login && X.cloud.login(); } });
+  X.booted = true;
   X.render();

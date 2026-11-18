@@ -10,6 +10,7 @@ const { $, $$, esc, icon, shuffle, TTS } = X;
 const S = () => X.S();
 const DOCS = () => window.DOCREAD || [];
 const allQ = () => [...(window.BANK || []), ...(window.EXAM_EXTRA || [])];
+const qsOf = d => d.qs ? d.qs.map(q => Object.assign({ set: d.id, part: 7, kind: 'p7' }, q)) : allQ().filter(q => q.set === d.set);
 
 /* ---------- từ tự học ở bài đọc mà Kho từ vựng chưa có: đưa vào kho để lịch ôn dùng được ---------- */
 const drWords = () => { const st = S(); return st.drWords || (st.drWords = {}); };
@@ -58,14 +59,14 @@ X.route(/^\/doc$/, view => {
     <p class="lead">Không phải nhìn danh sách từ. Đọc một bài thật, bấm vào từ mình chưa biết, học cho đến khi nhớ hẳn, rồi quay lại tự dịch bài và trả lời câu hỏi như đề thi. Từ đã học tự vào lịch ôn.</p>
     <div class="dr-steps"><div><b>1</b>Đọc, bấm chọn từ chưa biết</div><div><b>2</b>Vòng học đến khi nhớ hẳn</div><div><b>3</b>Tự dịch, trả lời câu hỏi, xem paraphrase</div><div><b>4</b>Lịch ôn tự nhắc</div></div>
     <div class="rl-grid sec">${L.map(d => { const p = (S().dr || {})[d.id] || {}, n = Object.keys(p.sel || {}).length;
-      return `<a class="card link dr-card ${p.done ? 'ok' : ''}" href="#/doc/${esc(d.id)}"><div class="kicker">${esc(d.kind)}</div><b>${esc(d.title)}</b><div class="small muted">${d.paras.reduce((a, x) => a + x.en.split(/\s+/).length, 0)} từ · ${allQ().filter(q => q.set === d.set).length} câu hỏi</div>
+      return `<a class="card link dr-card ${p.done ? 'ok' : ''}" href="#/doc/${esc(d.id)}"><div class="kicker">${esc(d.kind)}</div><b>${esc(d.title)}</b><div class="small muted">${d.paras.reduce((a, x) => a + x.en.split(/\s+/).length, 0)} từ · ${qsOf(d).length} câu hỏi${d.lvl ? ` · <span class="pill gold">${esc(d.lvl)}</span>` : ''}</div>
         <div class="small">${p.done ? `<span class="pill sage">✓ Đã học ${n} từ</span>` : n ? `<span class="pill gold">Đang học: ${n} từ</span>` : ''}</div></a>`; }).join('')}</div></div>`;
 });
 
 /* ---------- 1 bài ---------- */
 X.route(/^\/doc\/([\w-]+)(?:\/(\w+))?$/, (view, id, stage) => {
   const d = DOCS().find(x => x.id === id); if (!d) return X.go('#/doc');
-  const P = prog(id), Q = allQ().filter(q => q.set === d.set).sort((a, b) => (a.pos || 0) - (b.pos || 0));
+  const P = prog(id), Q = qsOf(d).sort((a, b) => (a.pos || 0) - (b.pos || 0));
   const SG = d.paras.map(p => segs(p.en, d.gl));
   const steps = ['read', 'learn', 'back', 'done'], stName = { read: '1 · Đọc & chọn từ', learn: '2 · Học từ', back: '3 · Quay lại bài', done: '4 · Lưu & ôn' };
   const cur = steps.includes(stage) ? stage : 'read';

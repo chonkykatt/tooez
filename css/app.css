@@ -1599,3 +1599,7 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .pl.flash{animation:plFlash 1s 2}@keyframes plFlash{50%{background:var(--plc);color:#fff}}
 .dr-pair{margin:3px 0;cursor:pointer;font-size:14px}
 .dr-sched{width:100%;border-collapse:collapse}.dr-sched td{padding:8px 6px;border-bottom:1px solid var(--line)}
+.dr-lv{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}@media (max-width:640px){.dr-lv{grid-template-columns:1fr}}
+.dr-lvb{font:inherit;text-align:left;padding:12px 14px;border:1.5px solid var(--line-strong);border-radius:14px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;gap:2px;color:var(--ink)}
+.dr-lvb b{font:700 18px var(--f-display)}.dr-lvb ol{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--ink-soft)}
+.dr-lvb.on{border:2px solid var(--syn);background:var(--syn-soft)}

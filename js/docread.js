@@ -113,10 +113,12 @@ const keyOf = (d, s) => s.g != null ? 'g:' + d.gl[s.g].t.toLowerCase() : 'v:' + 
 /* ---------- bước 2: vòng học đến khi nhớ hẳn ----------
    Mỗi từ có chuỗi đúng liên tiếp s. s = 0: thấy từ trong câu → chọn nghĩa; giữa: nhìn nghĩa → chọn từ / nghe → chọn nghĩa;
    lần cuối: tự gõ từ vào chỗ trống trong câu của bài. Sai → s về 0. Mỗi 5 câu có 1 lượt nối 4 cặp. */
+const SEQ = n => n === 2 ? ['ctx', 'cloze'] : n === 4 ? ['ctx', 'mean', 'listen', 'cloze'] : ['ctx', 'mix', 'cloze'];
+const RN = { ctx: 'Hiểu nghĩa trong câu', mean: 'Chọn đúng từ theo nghĩa', listen: 'Nghe rồi chọn nghĩa', mix: 'Chọn từ theo nghĩa hoặc nghe chọn nghĩa', cloze: 'Tự gõ lại từ trong câu' };
 function learnStage(view, d, P, head) {
   const IT = Object.values(P.sel), byKey = k => P.sel[k];
   let T = P.loop;
-  const fresh = () => { const ids = shuffle(IT.map(x => x.key)); T = P.loop = { target: P.target || 3, total: ids.length, waiting: ids, active: [], done: [], st: Object.fromEntries(ids.map(k => [k, { s: 0, w: 0 }])), n: 0, last: null, q: null };
+  const fresh = () => { const ids = shuffle(IT.map(x => x.key)); T = P.loop = { target: P.target || 3, total: ids.length, waiting: ids, active: [], done: [], st: Object.fromEntries(ids.map(k => [k, { s: 0, w: 0 }])), n: 0, last: null, q: null, started: false };
     nextQ(); };
   // bài đang học dở mà danh sách từ đã đổi → học lại từ đầu
   if (!T || T.total !== IT.length || IT.some(x => !T.st[x.key])) fresh();
@@ -133,22 +135,39 @@ function learnStage(view, d, P, head) {
     let pool = T.active.length > 1 ? T.active.filter(k => k !== T.last) : T.active.slice();
     pool = shuffle(pool).sort((a, b) => T.st[a].s - T.st[b].s);
     const k = pool[Math.floor(Math.random() * Math.min(3, pool.length))]; T.last = k;
-    const s = T.st[k].s, type = s >= T.target - 1 ? 'cloze' : s === 0 ? 'ctx' : (Math.random() < 0.5 ? 'mean' : 'listen');
+    const r = SEQ(T.target)[T.st[k].s] || 'cloze', type = r === 'mix' ? (Math.random() < 0.5 ? 'mean' : 'listen') : r;
     T.q = { type, k, hint: 0, opts: type === 'ctx' || type === 'listen' ? others(k, 'mean') : type === 'mean' ? others(k, 't') : null };
   }
-  function grade(k, ok, recall, hinted) { const st = T.st[k];
+  // trả về kết quả để báo cho học sinh: qua vòng / thuộc / dùng gợi ý nên chưa qua / sai về vòng 1
+  function grade(k, ok, recall, hinted) { const st = T.st[k], was = st.s;
     if (ok) { if (recall) { if (!hinted) st.s++; } else st.s = Math.min(st.s + 1, T.target - 1); if (st.s >= T.target) { T.active = T.active.filter(x => x !== k); T.done.push(k); } }
-    else { st.s = 0; st.w++; } }
+    else { st.s = 0; st.w++; }
+    return { ok, was, now: st.s, hinted: ok && recall && hinted, done: st.s >= T.target, reset: !ok && was > 0 }; }
+  const roundMsg = (k, g) => { const N = T.target, nm = SEQ(N)[g.now];
+    if (!g.ok) return g.reset ? `Sai một bước nên từ này <b>quay lại vòng 1/${N}</b>, học lại từ đầu.` : `Từ này vẫn ở vòng 1/${N}.`;
+    if (g.done) return `Đã đúng đủ ${N}/${N} vòng liên tiếp → <b>tính là thuộc</b>.`;
+    if (g.hinted) return `Đúng, nhưng đã dùng gợi ý nên chưa được qua vòng ${g.was + 1}/${N}. Làm lại vòng này lần sau.`;
+    if (g.now === g.was) return `Đúng! Vẫn cần qua vòng ${g.now + 1}/${N} (${RN[nm]}).`;
+    return `Đã qua vòng ${g.was + 1}/${N}. Lần tới gặp từ này: vòng ${g.now + 1} · ${RN[nm]}.`; };
   const hl = (sent, t) => { const i = sent.toLowerCase().indexOf(t.toLowerCase()); return i < 0 ? esc(sent) : esc(sent.slice(0, i)) + `<mark>${esc(sent.slice(i, i + t.length))}</mark>` + esc(sent.slice(i + t.length)); };
   const blank = (sent, t, hint) => { const i = sent.toLowerCase().indexOf(t.toLowerCase()); const b = `<span class="rl-blank">${esc(hint ? t.slice(0, hint) : t[0])}${'_'.repeat(Math.max(2, t.length - (hint || 1)))}</span>`; return i < 0 ? b + ' — ' + esc(sent) : esc(sent.slice(0, i)) + b + esc(sent.slice(i + t.length)); };
   const dots = k => `<div class="dr-dots">${Array.from({ length: T.target }, (_, i) => `<i class="${i < T.st[k].s ? 'f' : ''}"></i>`).join('')}</div>`;
   const line = it => `<div class="dr-ans"><b>${esc(it.t)}</b> <span>${esc(it.mean)}</span> <button class="icon-btn sm" data-sayw="${esc(it.t)}">${icon('vol')}</button></div>`;
 
+  const intro = () => { const lv = T.target;
+    view.innerHTML = `<div class="page dr-page">${head}<div class="card"><div class="kicker">Trước khi học ${T.total} từ đã chọn</div><h2 class="h2" style="margin:4px 0 8px">Chọn độ khó</h2>
+      <p class="small">Mỗi từ phải đi qua các vòng theo thứ tự. <b>Đúng liền một mạch hết các vòng mới tính là thuộc.</b> Sai ở bất kỳ vòng nào thì từ đó <b>quay lại vòng 1</b> và học lại từ đầu. Các từ được trộn lẫn với nhau, cứ vài câu lại có một lượt nối 4 từ với nghĩa.</p>
+      <div class="dr-lv">${[2, 3, 4].map(n => `<button class="dr-lvb ${n === lv ? 'on' : ''}" data-lv="${n}"><b>${n} vòng</b><span class="small muted">${{ 2: 'Nhanh', 3: 'Vừa (nên chọn)', 4: 'Khó, nhớ lâu nhất' }[n]}</span><ol>${SEQ(n).map(r => `<li>${RN[r]}</li>`).join('')}</ol></button>`).join('')}</div>
+      <p class="small faint">Vòng cuối luôn là tự gõ lại từ vào chỗ trống trong câu của bài. Dùng nút “Gợi ý chữ cái” thì câu đó đúng cũng không được qua vòng. Có thể đổi độ khó lúc đang học.</p>
+      <button class="btn pri lg" id="dr-start">Bắt đầu học ${icon('arrow')}</button></div></div>`;
+    $$('[data-lv]', view).forEach(b => b.onclick = () => { T.target = P.target = +b.dataset.lv; save(); intro(); });
+    $('#dr-start', view).onclick = () => { T.started = true; nextQ(); T.n = 1; save(); paint(); }; };
   const paint = () => {
+    if (T.started === false) return intro();
     if (T.finished) { P.stage = 'back'; save(); return X.go(`#/doc/${d.id}/back`); }
     const q = T.q, pct = Math.round(T.done.length / T.total * 100);
-    let h = `<div class="page dr-page">${head}<div class="card"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Đã nhớ hẳn <b>${T.done.length}</b>/${T.total} từ</span>
-      <span class="small muted">Đúng liên tiếp <select id="dr-tg">${[2, 3, 4].map(n => `<option ${n === T.target ? 'selected' : ''}>${n}</option>`).join('')}</select> lần thì tính là nhớ</span></div>
+    let h = `<div class="page dr-page">${head}<div class="card"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Đã thuộc <b>${T.done.length}</b>/${T.total} từ</span>
+      <span class="small muted">Độ khó <select id="dr-tg">${[2, 3, 4].map(n => `<option value="${n}" ${n === T.target ? 'selected' : ''}>${n} vòng</option>`).join('')}</select> <button class="btn ghost sm" id="dr-rule">Luật học?</button></span></div>
       <div class="bar sage" style="margin-top:8px"><i style="width:${pct}%"></i></div><div class="small faint" style="margin-top:4px">Câu ${T.n} · đang học ${T.active.length} từ · còn ${T.waiting.length} từ chờ</div></div><div class="card dr-q" id="dr-q">`;
     if (q.type === 'match') {
       h += `<div class="kicker">Nối từ với nghĩa trong bài</div><div class="dr-match"><div>${q.left.map(k => `<button class="dr-mb ${q.done.includes(k) ? 'done' : ''}" data-l="${esc(k)}" ${q.done.includes(k) ? 'disabled' : ''}>${esc(byKey(k).t)}</button>`).join('')}</div>
@@ -157,19 +176,20 @@ function learnStage(view, d, P, head) {
       const it = byKey(q.k);
       const label = { ctx: 'Từ được tô màu trong câu này nghĩa là gì?', mean: 'Từ nào trong bài có nghĩa này?', listen: 'Nghe rồi chọn nghĩa đúng', cloze: 'Gõ lại từ còn thiếu trong câu của bài' }[q.type];
       const prompt = q.type === 'ctx' ? `<div class="dr-sent">${hl(it.sent, it.t)}</div>` : q.type === 'mean' ? `<div class="ot-prompt">${esc(it.mean)}</div>` : q.type === 'listen' ? `<button class="btn syn lg" data-hear>${icon('vol')} Nghe</button>` : `<div class="dr-sent">${blank(it.sent, it.t, q.hint)}</div><div class="small muted">${esc(it.mean)}</div>`;
-      h += `<div class="kicker">${label}</div>${prompt}${dots(q.k)}`;
+      h += `<div class="small faint">Vòng ${T.st[q.k].s + 1}/${T.target} của từ này · ${RN[SEQ(T.target)[T.st[q.k].s] || 'cloze']}</div><div class="kicker">${label}</div>${prompt}${dots(q.k)}`;
       if (q.opts) h += `<div class="dr-opts">${q.opts.map((o, i) => `<button class="opt" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
       else h += `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input class="inp" id="dr-in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Gõ từ / cụm từ…" style="flex:1;min-width:200px"><button class="btn pri" id="dr-ok">Kiểm tra</button></div>
         <div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost sm" id="dr-hint">Gợi ý chữ cái</button><button class="btn ghost sm" id="dr-give">Không nhớ</button></div>${q.hint ? '<div class="small faint">Đã dùng gợi ý: đúng câu này sẽ không được tính là nhớ.</div>' : ''}`;
       h += `<div id="dr-fb"></div>`;
     }
     view.innerHTML = h + `</div></div>`;
+    $('#dr-rule', view).onclick = () => { T.started = false; save(); intro(); };
     $('#dr-tg', view).onchange = e => { T.target = P.target = +e.target.value; Object.values(T.st).forEach(s => s.s = Math.min(s.s, T.target - 1)); save(); paint(); };
     bind();
     if (q.type === 'listen') setTimeout(() => TTS.speak(byKey(q.k).t, { role: 'W' }), 200);
   };
-  const showFb = (ok, it, extra) => { const fb = $('#dr-fb', view); fb.innerHTML = `<div class="ot-fb ${ok ? 'good' : 'bad'}"><b>${ok ? (T.done.includes(it.key) ? '✓ Đúng! Từ này đã nhớ hẳn.' : '✓ Đúng rồi!') : 'Chưa đúng'}</b>${extra || ''}${line(it)}<div class="small" style="margin-top:4px">${hl(it.sent, it.t)}</div><button class="btn pri" id="dr-next" style="margin-top:8px">Câu tiếp ${icon('arrow')}</button></div>`;
-    $$('[data-sayw]', fb).forEach(b => b.onclick = () => TTS.speak(b.dataset.sayw, { role: 'W' })); $('#dr-next', view).onclick = () => { nextQ(); save(); paint(); }; $('#dr-next', view).focus(); };
+  const showFb = (g, it, extra) => { const ok = g.ok, fb = $('#dr-fb', view); const dd = $('.dr-dots', view); if (dd) dd.outerHTML = dots(it.key); fb.innerHTML = `<div class="ot-fb ${ok ? 'good' : 'bad'}" role="status"><b>${ok ? (g.done ? '✓ Đúng! Từ này đã thuộc.' : '✓ Đúng rồi!') : '✗ Sai rồi'}</b>${extra || ''}<div class="small" style="margin:4px 0">${roundMsg(it.key, g)}</div>${ok ? '' : '<div class="small" style="margin-top:4px">Đáp án đúng:</div>'}${line(it)}<div class="small" style="margin-top:4px">${hl(it.sent, it.t)}</div><button class="btn pri" id="dr-next" style="margin-top:8px">Câu tiếp ${icon('arrow')}</button></div>`;
+    $$('[data-sayw]', fb).forEach(b => b.onclick = () => TTS.speak(b.dataset.sayw, { role: 'W' })); const t0 = Date.now(), nx = $('#dr-next', view); nx.onclick = () => { if (Date.now() - t0 < 350) return; nextQ(); save(); paint(); }; setTimeout(() => nx.focus(), 0); fb.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
   const bind = () => {
     const q = T.q;
     if (q.type === 'match') {
@@ -180,21 +200,23 @@ function learnStage(view, d, P, head) {
         else { if (!q.errs.includes(sel)) q.errs.push(sel); b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 500); }
         sel = null;
         if (q.done.length === q.left.length) { q.left.forEach(k => grade(k, !q.errs.includes(k), false)); const fb = $('#dr-fb', view);
-          fb.innerHTML = `<div class="ot-fb ${q.errs.length ? 'bad' : 'good'}"><b>${q.errs.length ? `Nối xong, sai ${q.errs.length} từ` : '✓ Nối đúng hết!'}</b>${q.errs.map(k => line(byKey(k))).join('')}<button class="btn pri" id="dr-next" style="margin-top:8px">Câu tiếp ${icon('arrow')}</button></div>`;
+          fb.innerHTML = `<div class="ot-fb ${q.errs.length ? 'bad' : 'good'}"><b>${q.errs.length ? `Nối xong, sai ${q.errs.length} từ` : '✓ Nối đúng hết!'}</b>${q.errs.length ? `<div class="small" style="margin:4px 0">Các từ nối sai quay lại vòng 1/${T.target}. Nghĩa đúng:</div>` : `<div class="small" style="margin:4px 0">Cả 4 từ đều được cộng 1 vòng.</div>`}${q.errs.map(k => line(byKey(k))).join('')}<button class="btn pri" id="dr-next" style="margin-top:8px">Câu tiếp ${icon('arrow')}</button></div>`;
           $('#dr-next', view).onclick = () => { nextQ(); save(); paint(); }; } });
       return;
     }
     const it = byKey(q.k), hear = $('[data-hear]', view); if (hear) hear.onclick = () => TTS.speak(it.t, { role: 'W' });
     if (q.opts) { const right = q.type === 'mean' ? it.t : it.mean;
       $$('.opt', view).forEach(b => b.onclick = () => { const ok = q.opts[+b.dataset.i] === right; $$('.opt', view).forEach(x => { x.disabled = true; if (q.opts[+x.dataset.i] === right) x.classList.add('ok'); }); if (!ok) b.classList.add('bad');
-        grade(q.k, ok, false); if (ok) TTS.speak(it.t, { role: 'W' }); showFb(ok, it); }); return; }
+        const g = grade(q.k, ok, false); if (ok) TTS.speak(it.t, { role: 'W' }); showFb(g, it, ok ? '' : `<div class="small">Bạn chọn: “${esc(q.opts[+b.dataset.i])}”</div>`); save(); }); return; }
     const inp = $('#dr-in', view); inp.focus();
     const norm = s => s.toLowerCase().replace(/[’]/g, "'").replace(/[^a-z' -]/g, '').replace(/\s+/g, ' ').trim();
-    const check = () => { if (!inp.value.trim()) return; const ok = norm(inp.value) === norm(it.t); grade(q.k, ok, true, q.hint > 0); inp.disabled = true; $('#dr-ok', view).disabled = $('#dr-hint', view).disabled = $('#dr-give', view).disabled = true;
-      if (ok) TTS.speak(it.sent, { role: 'W' }); showFb(ok, it, ok ? '' : `<div class="small">Bạn gõ: “${esc(inp.value)}”</div>`); };
-    $('#dr-ok', view).onclick = check; inp.onkeydown = e => { if (e.key === 'Enter') check(); };
+    let checked = false;
+    const check = () => { if (checked) return; if (!inp.value.trim()) { $('#dr-fb', view).innerHTML = '<div class="small" style="color:var(--red)">Gõ đáp án vào ô trước rồi bấm Kiểm tra (không nhớ thì bấm “Không nhớ”).</div>'; inp.focus(); return; }
+      checked = true; const ok = norm(inp.value) === norm(it.t), g = grade(q.k, ok, true, q.hint > 0); inp.disabled = true; $('#dr-ok', view).disabled = $('#dr-hint', view).disabled = $('#dr-give', view).disabled = true;
+      if (ok) TTS.speak(it.sent, { role: 'W' }); showFb(g, it, ok ? '' : `<div class="small">Bạn gõ: “${esc(inp.value)}”</div>`); save(); };
+    $('#dr-ok', view).onclick = check; inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); check(); } };
     $('#dr-hint', view).onclick = () => { q.hint = Math.min(it.t.length - 1, (q.hint || 1) + 1); save(); paint(); };
-    $('#dr-give', view).onclick = () => { grade(q.k, false, true); inp.disabled = true; showFb(false, it); };
+    $('#dr-give', view).onclick = () => { if (checked) return; checked = true; const g = grade(q.k, false, true); inp.disabled = true; $('#dr-ok', view).disabled = $('#dr-hint', view).disabled = $('#dr-give', view).disabled = true; showFb(g, it); save(); };
   };
   save(); paint();
 }

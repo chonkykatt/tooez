@@ -25,37 +25,113 @@ const content = s => toks(s).filter(w => !STOP.has(w) && w.length > 1);
 const hasPhrase = (text, phrase) => { const T = toks(text).map(stem), P = toks(String(phrase).replace(/…|\.\.\./g, ' ').replace(/\b(someone|something|sb|sth|one's)\b/g, ' ')).filter(w => !STOP.has(w) || toks(phrase).length <= 2).map(stem);
   return P.length > 0 && P.every(p => T.includes(p)); };
 // điểm nói: số từ của câu mẫu nói đúng theo thứ tự (dãy con chung dài nhất)
+// giống nhau "gần đủ": máy nghe hay viết lệch 1-2 chữ cái (reimburse → reimbers), từ dài cho lệch tối đa 1/4
+const lev = (a, b) => { const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let p = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; } } return d[b.length]; };
+const near = (a, b) => a === b || (a.length >= 4 && b.length >= 3 && lev(a, b) <= Math.floor(Math.max(a.length, b.length) / 4));
 const lcs = (a, b) => { const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = a[i - 1] === b[j - 1] ? d[i - 1][j - 1] + 1 : Math.max(d[i - 1][j], d[i][j - 1]);
-  const hit = new Set(); for (let i = m, j = n; i > 0 && j > 0;) { if (a[i - 1] === b[j - 1]) { hit.add(i - 1); i--; j--; } else if (d[i - 1][j] >= d[i][j - 1]) i--; else j--; }
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = near(a[i - 1], b[j - 1]) ? d[i - 1][j - 1] + 1 : Math.max(d[i - 1][j], d[i][j - 1]);
+  const hit = new Set(); for (let i = m, j = n; i > 0 && j > 0;) { if (near(a[i - 1], b[j - 1]) && d[i][j] === d[i - 1][j - 1] + 1) { hit.add(i - 1); i--; j--; } else if (d[i - 1][j] >= d[i][j - 1]) i--; else j--; }
   return hit; };
 const scoreSay = (target, alts) => { const T = toks(target).map(stem); let best = { r: 0, hit: new Set(), said: '' };
-  (alts || []).forEach(a => { const hit = lcs(T, toks(a).map(stem)), r = T.length ? hit.size / T.length : 0; if (r > best.r || !best.said) best = { r, hit, said: a }; });
+  (alts || []).forEach(a => { let hit = lcs(T, toks(a).map(stem)), r = T.length ? hit.size / T.length : 0;
+    // từ ngắn bị máy tách đôi (postpone → "post-hone"): so cả chuỗi liền
+    if (r < 1 && T.length <= 3 && near(toks(target).join(''), toks(a).join(''))) { hit = new Set(T.map((_, i) => i)); r = 1; }
+    if (r > best.r || !best.said) best = { r, hit, said: a }; });
   return best; };
 // mask = chưa cho xem đáp án: từ nói thiếu hiện thành ____ để lần sau tự nhớ ra
 const markTarget = (target, hit, mask) => { let k = -1; return esc(target).split(/(\s+)/).map(p => { if (!p.trim()) return p; const n = toks(p).length; if (!n) return p; const ok = [...Array(n)].every(() => hit.has(++k)); return ok ? `<span class="ot-ok">${p}</span>` : mask ? '<span class="ot-gap">____</span>' : `<span class="ot-miss">${p}</span>`; }).join(''); };
 
-/* ---------- micro: nhận giọng nói của trình duyệt ---------- */
+/* ---------- micro ----------
+   Hai cách nghe:
+   - native: nhận giọng nói có sẵn của Chrome / Edge / Safari (nhanh, nhưng gửi tiếng nói lên máy chủ của hãng)
+   - whisper: tự ghi âm rồi chuyển thành chữ NGAY TRÊN MÁY bằng mô hình Whisper (tải ~40 MB lần đầu, sau đó dùng cả khi offline).
+     Dùng cho Opera, Cốc Cốc, Brave, Firefox… (có nút nhận giọng nói nhưng không chạy), hoặc khi cách native báo lỗi mạng. */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-X.canSpeak = !!SR;
-let rec = null;
-const stopRec = () => { if (rec) { try { rec.abort(); } catch (e) {} rec = null; } };
-// nghe một lượt; onPart(chữ tạm) để hiện chữ đang nói; trả về các cách máy nghe được (tốt nhất trước)
-const listen = onPart => new Promise((res, rej) => {
-  if (!SR) return rej(new Error('nosr'));
-  stopRec(); TTS.stop();
+const UA = navigator.userAgent || '';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const nativeGood = () => !!SR && !lsGet('tooez.srBroken') && !/OPR\/|Opera|Vivaldi|YaBrowser|coc_coc|CocCoc|SamsungBrowser|Firefox|FxiOS/i.test(UA) && !navigator.brave;
+const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && (window.AudioContext || window.webkitAudioContext));
+X.canSpeak = nativeGood() || canRecord;
+let rec = null, stopNow = null;
+const stopRec = () => { if (rec) { try { rec.abort(); } catch (e) {} rec = null; } if (stopNow) { stopNow(true); stopNow = null; } };
+X.micStop = () => { if (rec) { try { rec.stop(); } catch (e) {} } if (stopNow) stopNow(false); };
+
+// cách 1: native
+const listenNative = (ui) => new Promise((res, rej) => {
   const r = rec = new SR(); r.lang = 'en-US'; r.interimResults = true; r.maxAlternatives = 5; r.continuous = false;
-  let alts = [], done = false;
+  let alts = [], done = false, heard = false; const t0 = Date.now();
   const end = v => { if (done) return; done = true; clearTimeout(t); if (rec === r) rec = null; v instanceof Error ? rej(v) : res(v); };
   const t = setTimeout(() => { try { r.stop(); } catch (e) {} }, 15000);
-  r.onresult = e => { const last = e.results[e.results.length - 1]; const said = [...e.results].map(x => x[0].transcript).join(' ');
-    if (onPart) onPart(said); if (last.isFinal) alts = [...last].map(x => [...e.results].slice(0, -1).map(y => y[0].transcript).concat(x.transcript).join(' ')); };
+  r.onaudiostart = () => ui.state('rec');
+  r.onresult = e => { heard = true; const last = e.results[e.results.length - 1]; const said = [...e.results].map(x => x[0].transcript).join(' ');
+    ui.part(said); if (last.isFinal) alts = [...last].map(x => [...e.results].slice(0, -1).map(y => y[0].transcript).concat(x.transcript).join(' ')); };
   r.onerror = e => end(new Error(e.error || 'err'));
-  r.onend = () => end(alts.length ? alts : []);
-  try { r.start(); } catch (e) { end(e); }
+  // trình duyệt có nút nhưng không có dịch vụ: kết thúc ngay, không nghe gì → coi như hỏng
+  r.onend = () => { if (!alts.length && !heard && Date.now() - t0 < 900) return end(new Error('broken')); end(alts); };
+  try { r.start(); ui.state('rec'); } catch (e) { end(e); }
 });
+
+// cách 2: Whisper trên máy
+let asrP = null;
+const loadASR = onProg => asrP || (asrP = (async () => {
+  const T = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js');
+  const gpu = !!navigator.gpu && !!(await navigator.gpu.requestAdapter().catch(() => null));
+  const files = {}; const prog = p => { if (p && p.file && p.total) { files[p.file] = [p.loaded || 0, p.total]; const v = Object.values(files), l = v.reduce((a, x) => a + x[0], 0), tt = v.reduce((a, x) => a + x[1], 0); onProg && onProg(Math.round(100 * l / tt)); } };
+  return T.pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', gpu ? { device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' }, progress_callback: prog } : { device: 'wasm', dtype: 'q8', progress_callback: prog });
+})().catch(e => { asrP = null; throw e; }));
+X.outPreload = () => { if (!nativeGood() && canRecord) loadASR().catch(() => {}); };
+const to16k = async blob => { const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(); const dec = await ac.decodeAudioData(await blob.arrayBuffer()); ac.close && ac.close();
+  const oc = new OfflineAudioContext(1, Math.max(1, Math.ceil(dec.duration * 16000)), 16000), src = oc.createBufferSource(); src.buffer = dec; src.connect(oc.destination); src.start(); return (await oc.startRendering()).getChannelData(0); };
+const listenWhisper = async ui => {
+  let modelReady = false; const mp = loadASR(p => { if (!modelReady) ui.status(`Đang tải bộ nghe giọng nói (lần đầu, ~40 MB): ${p}%`); });
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { throw new Error(e && e.name === 'NotAllowedError' ? 'not-allowed' : 'audio-capture'); }
+  const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(), an = ac.createAnalyser(); an.fftSize = 1024; ac.createMediaStreamSource(stream).connect(an);
+  const mr = new MediaRecorder(stream), chunks = []; mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const buf = new Float32Array(an.fftSize); let spoke = false, quietSince = 0, raf = 0; const t0 = Date.now();
+  const blob = await new Promise(res => {
+    let fin = false; const finish = abort => { if (fin) return; fin = true; cancelAnimationFrame(raf); stopNow = null; mr.onstop = () => res(abort ? null : new Blob(chunks, { type: mr.mimeType || 'audio/webm' })); try { mr.stop(); } catch (e) { res(null); } };
+    stopNow = finish; mr.start(); ui.state('rec');
+    const tick = () => { an.getFloatTimeDomainData(buf); let sum = 0; for (const v of buf) sum += v * v; const rms = Math.sqrt(sum / buf.length), lvl = Math.min(1, rms * 12); ui.level(lvl);
+      const now = Date.now(); if (rms > 0.03) { spoke = true; quietSince = 0; } else if (spoke && !quietSince) quietSince = now;
+      if ((spoke && quietSince && now - quietSince > 1300) || now - t0 > 12000 || (!spoke && now - t0 > 7000)) return finish(false);
+      raf = requestAnimationFrame(tick); };
+    tick();
+  });
+  stream.getTracks().forEach(t => t.stop()); ac.close && ac.close(); ui.level(0);
+  if (!blob) return [];
+  if (!spoke) throw new Error('no-speech');
+  ui.state('think'); ui.status(modelReady ? 'Đang chuyển thành chữ…' : 'Đang chuyển thành chữ (chờ tải xong bộ nghe)…');
+  const asr = await mp; modelReady = true; ui.status('Đang chuyển thành chữ…');
+  const out = await asr(await to16k(blob));
+  const txt = String(out && out.text || '').trim().replace(/^[\[(].*[\])]$/, '');
+  ui.part(txt); return txt ? [txt] : [];
+};
+// nghe một lượt; trả về các cách máy nghe được (tốt nhất trước)
+const listen = async ui => {
+  stopRec(); TTS.stop();
+  if (nativeGood()) { try { return await listenNative(ui); }
+    catch (e) { if (!['broken', 'network', 'service-not-allowed', 'language-not-supported'].includes(e.message) || !canRecord) throw e; lsSet('tooez.srBroken', '1'); } }
+  if (!canRecord) throw new Error('nosr');
+  return listenWhisper(ui);
+};
+// nút micro dùng chung: bấm để nói, đang ghi âm thì có thanh mức âm + bấm lần nữa để dừng
+const micButton = (btn, o) => {
+  const idle = o.idle || btn.textContent; let busy = false;
+  const meter = document.createElement('div'); meter.className = 'ot-meter'; meter.hidden = true; meter.innerHTML = '<span class="ot-dot"></span><span class="ot-bar"><i></i></span><span class="small" data-m></span>'; btn.insertAdjacentElement('afterend', meter);
+  const ui = { part: t => o.part && o.part(t), level: v => { const i = meter.querySelector('i'); if (i) i.style.width = Math.round(v * 100) + '%'; },
+    status: t => { meter.hidden = false; meter.querySelector('[data-m]').textContent = t; },
+    state: st => { meter.hidden = st !== 'rec' && st !== 'think'; meter.classList.toggle('think', st === 'think'); meter.querySelector('[data-m]').textContent = st === 'rec' ? 'Đang ghi âm… nói xong sẽ tự dừng, hoặc bấm Dừng' : st === 'think' ? 'Đang chuyển thành chữ…' : ''; btn.textContent = st === 'rec' ? '■ Dừng' : st === 'think' ? '⏳ Đang nghe lại…' : idle; btn.classList.toggle('on', st === 'rec'); btn.disabled = st === 'think'; } };
+  btn.onclick = async () => {
+    if (busy) { X.micStop(); return; }
+    busy = true; ui.state('wait'); btn.textContent = '🎤 Đang mở micro…';
+    try { const alts = await listen(ui); if (!btn.isConnected) return; if (!alts.length) throw new Error('no-speech'); o.result(alts); }
+    catch (e) { if (btn.isConnected) o.error(e); }
+    finally { busy = false; if (btn.isConnected) { meter.hidden = true; btn.classList.remove('on'); btn.disabled = !!(o.lock && o.lock()); btn.textContent = o.again || idle; } }
+  };
+};
 const micErr = e => ({ 'not-allowed': 'Trình duyệt chưa cho dùng micro. Bấm vào biểu tượng ổ khoá cạnh địa chỉ web → cho phép Micro, rồi thử lại.', 'service-not-allowed': 'Trình duyệt chưa cho dùng micro. Bấm vào biểu tượng ổ khoá cạnh địa chỉ web → cho phép Micro, rồi thử lại.',
-  'no-speech': 'Chưa nghe thấy gì. Bấm 🎤 rồi nói to, rõ hơn nhé.', 'audio-capture': 'Không tìm thấy micro trên máy.', network: 'Nhận giọng nói cần có mạng. Kiểm tra mạng rồi thử lại.', nosr: 'Trình duyệt này chưa hỗ trợ nhận giọng nói. Dùng Chrome, Edge hoặc Safari nhé.' })[e && e.message] || 'Không nghe được, thử lại nhé.';
+  'no-speech': 'Chưa nghe thấy gì. Bấm 🎤 rồi nói to, rõ hơn nhé.', 'audio-capture': 'Không tìm thấy micro trên máy.', network: 'Nhận giọng nói cần có mạng. Kiểm tra mạng rồi thử lại.', nosr: 'Trình duyệt này chưa ghi âm được. Dùng Chrome, Edge hoặc Safari nhé.', broken: 'Trình duyệt này không nghe được giọng nói. Thử lại một lần nữa, TOOEZ sẽ chuyển sang bộ nghe chạy trên máy.' })[e && e.message] || 'Không nghe được, thử lại nhé.';
 
 /* ---------- nguồn từ ---------- */
 const head = w => w.w.split(' / ')[0].replace(/\.\.\.|…/g, '').replace(/\s+/g, ' ').trim();
@@ -102,10 +178,8 @@ X.outTask = (el, t, done) => {
     const judge = alts => { tries++; const best = scoreSay(target, alts); const ok = best.r >= need; show(ok, best); };
     if ($('#ot-hear', el)) { $('#ot-hear', el).onclick = () => TTS.speak(target, { role: 'W' }); setTimeout(() => { if (el.isConnected) TTS.speak(target, { role: 'W' }); }, 300); }
     const mic = $('#ot-mic', el);
-    if (mic) mic.onclick = async () => { mic.disabled = true; mic.classList.add('on'); mic.textContent = '🎤 Đang nghe… nói đi'; $('#ot-live', el).textContent = '';
-      try { const alts = await listen(s => { $('#ot-live', el).textContent = s; }); if (!el.isConnected) return; if (!alts.length) throw new Error('no-speech'); judge(alts); }
-      catch (e) { if (el.isConnected) $('#ot-fb', el).innerHTML = fb(false, esc(micErr(e))); }
-      finally { if (el.isConnected && !$('#ot-next', el)) { mic.disabled = false; mic.classList.remove('on'); mic.textContent = '🎤 Nói lại'; } } };
+    if (mic) { X.outPreload(); micButton(mic, { idle: '🎤 Bấm rồi nói', again: '🎤 Nói lại', part: t => { $('#ot-live', el).textContent = t; },
+      lock: () => !!$('#ot-next', el), result: alts => judge(alts), error: e => { $('#ot-fb', el).innerHTML = fb(false, esc(micErr(e))); } }); }
     const ok = $('#ot-ok', el), inp = $('#ot-in', el);
     if (ok) { ok.onclick = () => inp.value.trim() && judge([inp.value]); inp.onkeydown = e => { if (e.key === 'Enter') ok.click(); }; }
     $('#ot-hint', el).onclick = () => { hint++; const tt = target.split(' '); $('#ot-live', el).textContent = 'Gợi ý: ' + tt.map((x, i) => i < hint ? x : x[0] + '…').join(' '); };
@@ -129,7 +203,7 @@ X.outTask = (el, t, done) => {
       const sb = $('#ot-self', el); if (sb) sb.onclick = () => next(true, true);
     };
     $('#ot-ok', el).onclick = () => inp.value.trim() && judge(inp.value); inp.onkeydown = e => { if (e.key === 'Enter') $('#ot-ok', el).click(); }; inp.focus();
-    const sy = $('#ot-say', el); if (sy) sy.onclick = async () => { try { const a = await listen(s => { inp.value = s; }); if (a.length) inp.value = a[0]; } catch (e) { $('#ot-fb', el).innerHTML = fb(false, esc(micErr(e))); } };
+    const sy = $('#ot-say', el); if (sy) micButton(sy, { idle: '🎤 nói câu', part: t => { inp.value = t; }, result: a => { inp.value = a[0]; }, error: e => { $('#ot-fb', el).innerHTML = fb(false, esc(micErr(e))); } });
     return;
   }
 
@@ -158,7 +232,7 @@ X.outTask = (el, t, done) => {
       <textarea class="inp ot-area" id="ot-in" rows="3" placeholder="vd. My company will ${esc(head(w))} …" spellcheck="true"></textarea>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn pri" id="ot-ok">Xong, đối chiếu</button>${X.canSpeak ? '<button class="btn" id="ot-say">🎤 Nói câu</button>' : ''}</div><div id="ot-fb"></div></div>`;
     const inp = $('#ot-in', el); inp.focus();
-    const sy = $('#ot-say', el); if (sy) sy.onclick = async () => { sy.disabled = true; sy.textContent = '🎤 Đang nghe…'; try { const a = await listen(s => { inp.value = s; }); if (a.length) inp.value = a[0][0].toUpperCase() + a[0].slice(1) + (/[.!?]$/.test(a[0]) ? '' : '.'); } catch (e) { $('#ot-fb', el).innerHTML = fb(false, esc(micErr(e))); } finally { sy.disabled = false; sy.textContent = '🎤 Nói câu'; } };
+    const sy = $('#ot-say', el); if (sy) micButton(sy, { idle: '🎤 Nói câu', part: t => { inp.value = t; }, result: a => { inp.value = a[0][0].toUpperCase() + a[0].slice(1) + (/[.!?]$/.test(a[0]) ? '' : '.'); }, error: e => { $('#ot-fb', el).innerHTML = fb(false, esc(micErr(e))); } });
     $('#ot-ok', el).onclick = () => { const v = inp.value.trim();
       if (!hasPhrase(v, head(w))) { $('#ot-fb', el).innerHTML = fb(false, `Câu chưa có từ <b>${esc(head(w))}</b> (đổi dạng cũng được, vd. thêm -s, -ed).`); return; }
       if (toks(v).length < 5) { $('#ot-fb', el).innerHTML = fb(false, 'Câu hơi ngắn. Viết ít nhất 5 từ, có ai làm gì, ở đâu hoặc khi nào nhé.'); return; }
@@ -237,7 +311,7 @@ X.route(/^\/output(?:\/(\w+))?$/, (view, mode) => {
       ${X.canSpeak ? '' : '<div class="card sec small">Trình duyệt này chưa nghe được giọng nói, phần Nói sẽ cho gõ thay. Muốn luyện nói, mở bằng Chrome, Edge hoặc Safari.</div>'}
       <div class="rl-grid sec">${MODES.map(m => `<a class="card link ot-mode" href="#/output/${m.k}"><div class="ot-ic">${m.ic}</div><b>${m.n}</b><div class="small muted">${m.d}</div></a>`).join('')}</div>
       <div class="sec-h sec"><h2 class="h2">Sổ câu của bạn</h2><a class="small" href="#/output/so">${n} câu đã đặt ${icon('arrow')}</a></div>
-      ${X.canSpeak ? '<p class="small faint">Phần nhận giọng nói dùng dịch vụ có sẵn của trình duyệt (Chrome gửi tiếng nói đến Google để chuyển thành chữ). TOOEZ không lưu lại tiếng nói của bạn.</p>' : ''}</div>`;
+      ${X.canSpeak ? `<p class="small faint">${nativeGood() ? 'Phần nghe giọng nói dùng dịch vụ có sẵn của trình duyệt (Chrome gửi tiếng nói đến Google để chuyển thành chữ).' : 'Phần nghe giọng nói chạy ngay trên máy bạn (lần đầu tải bộ nghe khoảng 40 MB), tiếng nói không gửi đi đâu.'} TOOEZ không lưu lại tiếng nói của bạn.</p>` : ''}</div>`;
     return;
   }
   const tasks = makeSet(M.k);

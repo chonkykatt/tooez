@@ -1587,3 +1587,8 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .rl-out .small{color:var(--ink-soft, #555)}.rl-out .muted{color:var(--ink-faint)}
 .rl-out .btn.ghost{color:var(--ink);border-color:var(--line, #ddd)}
 .ot-gap{color:var(--ink-faint);letter-spacing:1px}
+.ot-meter{display:flex;align-items:center;gap:8px;margin-top:4px}.ot-meter[hidden]{display:none}
+.ot-dot{width:10px;height:10px;border-radius:50%;background:var(--red, #d64545);animation:otBlink 1s infinite}.ot-meter.think .ot-dot{background:var(--syn);animation:none}
+@keyframes otBlink{50%{opacity:.25}}
+.ot-bar{width:120px;height:8px;border-radius:4px;background:var(--line, #e6e3f3);overflow:hidden}.ot-bar i{display:block;height:100%;width:0;background:var(--sage, #1f9d63);transition:width .08s}
+.ot-meter.think .ot-bar{display:none}

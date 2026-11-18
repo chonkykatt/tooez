@@ -32,7 +32,7 @@ const NAV = [
   ['/errors', 'err', 'Sổ lỗi', '4 - Chữa'],
   ['/progress', 'chart', 'Tiến độ & kỹ năng', 'Theo dõi & tra cứu'], ['/library', 'book', 'Sổ tay ôn nhanh'], ['/coach', 'coach', 'Học cùng coach'], ['/settings', 'user', 'Hồ sơ'],
 ];
-const navOn = (h, r) => h.startsWith(r) || (r === '/path' && (h.startsWith('/unit') || h.startsWith('/st/'))) || (r === '/progress' && h.startsWith('/skill')) || (r === '/tests' && (h.startsWith('/exam') || h.startsWith('/fulltest'))) || (r === '/library' && (h.startsWith('/p1lib') || h.startsWith('/deck') || h.startsWith('/lesson')));
+const navOn = (h, r) => h.startsWith(r) || (r === '/path' && (h.startsWith('/unit') || h.startsWith('/st/'))) || (r === '/progress' && h.startsWith('/skill')) || (r === '/tests' && (h.startsWith('/exam') || h.startsWith('/fulltest') || h.startsWith('/report'))) || (r === '/library' && (h.startsWith('/p1lib') || h.startsWith('/deck') || h.startsWith('/lesson')));
 X.renderSide = (h = location.hash.slice(1)) => {
   const side = $('#side'); if (!side) return;
   const ec = X.errorCounts(), due = X.wordDue().length;
@@ -105,6 +105,8 @@ X.route(/^\/today$/, view => {
     <p class="lead">${xp >= goal ? 'Xong mục tiêu hôm nay rồi. Làm thêm phần nào cũng là cộng thêm.' : xp ? `Còn ${goal - xp} XP nữa là xong mục tiêu hôm nay.` : 'Mấy việc nhỏ bên dưới, làm theo thứ tự là xong ngày học.'}</p></div></div>
     ${!X.TTS.hasFiles() && X.TTS.voices.length && X.TTS.quality() === 'robot' && !s.seenTips.voice ? `<div class="card tint row" id="vtip" style="margin-top:16px">${icon('vol')}<div class="grow small"><b>Giọng đọc trên máy này đang nghe như robot.</b> Mở web bằng Microsoft Edge hoặc cài giọng Premium miễn phí là nghe tự nhiên ngay.</div><a class="btn sm pri" href="#/settings">Xem cách</a><button class="btn sm ghost" id="vtip-x">Ẩn</button></div>` : ''}
     <div class="flow-today"><span class="small muted">Cách học trên TOOEZ, lặp lại mỗi tuần:</span>${X.flowStrip(exSug && exSug.first ? 'do' : 'hoc')}</div>
+    ${(() => { const pw = X.ptWeek && X.ptWeek(); if (!pw || !pw.w) return ''; return `<a class="card sec link pt-today" href="#/report" style="display:block"><div class="row"><div class="kicker syn grow">Lộ trình từ bài chuẩn · Tuần ${pw.w.w}/${pw.W}</div><span class="small muted">Xem báo cáo ${icon('arrow')}</span></div>
+      <div class="small muted" style="margin:2px 0 8px">Chuyên đề ưu tiên: ${esc(pw.top)}</div><div class="rp-wt">${pw.w.tasks.map(([h, t]) => `<span class="rp-task" data-href="${h}">${icon('arrow')} ${esc(t)}</span>`).join('')}${pw.w.check ? `<span class="rp-task chk" data-href="${pw.w.check[0]}">${icon('target')} ${esc(pw.w.check[1])}</span>` : ''}</div></a>`; })()}
     <div class="hero-today">
       <div class="card"><div class="sec-h" style="margin-bottom:4px"><h2 class="h2">Nhiệm vụ hôm nay</h2><span class="kicker">${missions.filter(m => done[m.k]).length}/${missions.length}</span></div>
         <div class="mission">${missions.map((m, mi) => `<div class="m ${done[m.k] ? 'done' : ''}"><span class="mi ${MI[m.k][0]}">${done[m.k] ? icon('check') : icon(MI[m.k][1])}</span><div class="grow"><div class="t">${esc(m.t)}</div><div class="d">${esc(m.d)}</div></div><a class="btn sm ${done[m.k] ? '' : 'pri'}" href="${m.href}">${m.btn}</a></div>`).join('')}</div>

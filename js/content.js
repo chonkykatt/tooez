@@ -41,7 +41,10 @@
   const toReal = (a, oi) => { const r = REM.get(a); if (!r) return oi; if (r.includes(oi)) return -1; return oi - r.filter(x => x < oi).length; };
   const toOrig = (a, ri) => { const r = (REM.get(a) || []).slice().sort((x, y) => x - y); let i = ri; for (const x of r) if (x <= i) i++; return i; };
   const seg = (o, k) => { if (o == null) return undefined; if (Array.isArray(o)) { if (k[0] === '#') return o.find(x => x && x.id === k.slice(1)); if (/^\d+$/.test(k)) { const i = toReal(o, +k); return i < 0 ? undefined : o[i]; } } return o[k]; };
-  const resolve = path => { const [root, rest] = path.split('|'); let o = window[root], parent = null, key = null; for (const k of (rest ? rest.split('.') : [])) { parent = o; key = k; o = seg(o, k); if (o === undefined) return {}; } return { o, parent, key }; };
+  // chỉ cho sửa các kho dữ liệu bài học (không cho chạm vào biến khác của trang như X, TOOEZ_CLOUD, location…)
+  const ROOTS = new Set(['PATH', 'LABS', 'VOCAB', 'LIBDECK', 'P1LIB', 'CLOZE', 'CONF', 'AHA', 'NGOP_SETS', 'REEL', 'RICH_LIST']);
+  const BADK = new Set(['__proto__', 'constructor', 'prototype']);
+  const resolve = path => { const [root, rest] = String(path).split('|'); if (!ROOTS.has(root)) return {}; let o = window[root], parent = null, key = null; for (const k of (rest ? rest.split('.') : [])) { if (BADK.has(k)) return {}; parent = o; key = k; o = seg(o, k); if (o === undefined) return {}; } return { o, parent, key }; };
   X_resolve = resolve;
   function applyObj(id, d) {
     const { o, parent, key } = resolve(id); if (!o || typeof o !== 'object') return false;
@@ -57,9 +60,14 @@
   }
   const DONE = new Set();   // mỗi bản sửa chỉ áp dụng 1 lần (dữ liệu nạp muộn thì lần sau mới áp được)
   // nội dung soạn trên web được phép có HTML định dạng (đậm, bảng…) nhưng không được có script / sự kiện / link javascript:
-  const BAD_TAG = /<\s*\/?\s*(script|iframe|object|embed|link|meta|style|base|form|svg|math)\b[^>]*>/gi;
-  const clean = v => typeof v === 'string' ? v.replace(BAD_TAG, '').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/(href|src)\s*=\s*(["']?)\s*(javascript|vbscript|data:text)/gi, '$1=$2#')
-    : Array.isArray(v) ? v.map(clean) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)])) : v;
+  // Dùng DOMPurify (js/vendor) - lọc bằng regex lách được (vd. <img src=x/onerror=…>, thẻ lồng <ifr<iframe>ame>).
+  // Chỉ lọc chuỗi có thẻ HTML: chuỗi chữ thường giữ nguyên (lọc sẽ đổi "&" thành "&amp;" rồi hiện sai).
+  const PURIFY = { FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'option', 'math'], FORBID_ATTR: ['action', 'formaction'] };
+  // không tải được DOMPurify: bỏ hết thẻ (mất định dạng nhưng an toàn), lặp tới khi hết thẻ lồng nhau
+  const stripTags = s => { let p; do { p = s; s = s.replace(/<[^<>]*>/g, ''); } while (s !== p); return s.replace(/</g, '&lt;'); };
+  const cleanStr = s => !/<[a-z!/?]/i.test(s) ? s : window.DOMPurify && DOMPurify.isSupported ? DOMPurify.sanitize(s, PURIFY) : stripTags(s);
+  const clean = v => typeof v === 'string' ? cleanStr(v)
+    : Array.isArray(v) ? v.map(clean) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !BADK.has(k)).map(([k, x]) => [k, clean(x)])) : v;
   const safeUrl = u => typeof u === 'string' && /^(https:\/\/|img\/|audio\/)/.test(u) ? u : '';
   function apply(list) {
     list = list.map(r => { const d = clean(r.data || {}); if (d && typeof d === 'object') { if ('img' in d) d.img = safeUrl(d.img); if ('u' in d) d.u = safeUrl(d.u); } return Object.assign({}, r, { data: d }); });
@@ -82,9 +90,19 @@
     refresh: async () => {
       if (!C.url || !C.key) return false;
       try {
-        const r = await fetch(C.url + '/rest/v1/content_edits?select=id,kind,data,updated_at&order=updated_at.asc', { headers: { apikey: C.key, Authorization: 'Bearer ' + C.key } });
-        if (!r.ok) return false;
-        const fresh = await r.json();
+        // Supabase chỉ trả tối đa ~1000 dòng mỗi lần (mỗi câu audio là 1 dòng) → tải từng trang cho đủ.
+        // Thiếu trang nào thì bỏ cả lần tải này, vì dòng bị thiếu sẽ bị coi là "đã bỏ sửa" và câu bị trả về bản gốc.
+        const fresh = [];
+        for (let total = Infinity; fresh.length < total;) {
+          const r = await fetch(C.url + `/rest/v1/content_edits?select=id,kind,data,updated_at&order=updated_at.asc,kind.asc,id.asc&offset=${fresh.length}&limit=1000`,
+            { headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, Prefer: 'count=exact' } });
+          if (!r.ok) return false;
+          const page = await r.json(), m = /\/(\d+)$/.exec(r.headers.get('content-range') || '');
+          if (!Array.isArray(page)) return false;
+          fresh.push(...page);
+          if (m) total = +m[1]; else if (page.length < 1000) total = fresh.length;   // không đọc được tổng số: trang cuối là trang chưa đầy
+          if (!page.length && fresh.length < total) return false;                      // bảng vừa bị xóa bớt giữa chừng: để lần sau tải lại
+        }
         const changed = JSON.stringify(fresh) !== JSON.stringify(rows);
         if (changed) {
           // câu bị bỏ sửa: trả về bản gốc

@@ -173,6 +173,15 @@ function partSection(A, p) {
     <div class="rp-pbody">${qtTable(A, p)}${extra}<div class="row" style="margin-top:10px"><button class="btn sm" data-rv="${p}">${icon('eye')} Chữa từng câu Part ${p}</button></div></div></details>`;
 }
 
+const FOCUS = { para: 'p34', implied: 'p34', end: 'p34', p2: 'p2', rel: 'p6', gram: 'p5', multi: 'p7' };
+function applyPlan(i, order) {
+  const P = S().profile, rec = (S().placement || [])[i] || {}, pick = [...new Set(order.map(k => FOCUS[k]).filter(Boolean))].slice(0, 2);
+  P.focus = [...(P.focus || []).filter(k => k === 'nen' || k === 'hieu'), ...pick]; if (!P.focus.includes('hieu') && order[0] === 'para') P.focus.unshift('hieu');
+  P.ptPlan = { at: Date.now(), rec: i };
+  if (rec.min) P.dailyGoal = rec.min <= 30 ? 30 : rec.min <= 60 ? 60 : 100;
+  if (rec.aim) P.target = String(rec.aim); if (rec.date) P.examDate = rec.date; if (rec.L) P.current = String(rec.L + rec.R);
+  X.save();
+}
 function render(view, idx) {
   const list = S().placement || [];
   if (!list.length) { view.innerHTML = `<div class="page"><div class="card sec" style="max-width:620px;margin:40px auto;text-align:center">${X.xi('think', 80)}<h1 class="h1">Chưa có báo cáo</h1><p class="muted">Làm bài chuẩn 200 câu một lần để có báo cáo phân tích và lộ trình riêng.</p><a class="btn pri lg" href="#/fulltest">Làm bài chuẩn ${icon('arrow')}</a></div></div>`; return; }
@@ -180,6 +189,8 @@ function render(view, idx) {
   if (!A) { view.innerHTML = '<div class="page"><p>Không tải được dữ liệu bài chuẩn.</p></div>'; return; }
   const sc = Object.keys(TOPICS).map(k => topicScore(A, k)).sort((a, b) => b.gap - a.gap), top = sc[0], T = TOPICS[top.k];
   const order = sc.filter(x => x.gap > 0.5).map(x => x.k); if (!order.length) order.push('multi', 'para');
+  if (i === list.length - 1 && !rec.ap) { applyPlan(i, order); rec.ap = 1; X.save(); }   // bài mới nhất: tự dùng lộ trình, không bắt học sinh tự bấm
+  const using = (S().profile.ptPlan || {}).rec === i;
   const PL = plan(A, order), gapPts = Math.max(0, A.aim - A.est);
   // điểm mạnh: dạng câu ≥ 80% (ít nhất 3 câu)
   const strong = [1, 2, 3, 4, 5, 6, 7].flatMap(p => A.qtRows(p).filter(x => x.n >= 3 && x.ok / x.n >= 0.8).map(x => `Part ${p}: ${x.name.toLowerCase()} (${x.ok}/${x.n})`)).slice(0, 5);
@@ -260,26 +271,24 @@ function render(view, idx) {
       <p>${esc(verdict[2])}</p><ul class="small ex-ul"><li>Cơ sở: phần lớn câu sai thuộc nhóm kỹ năng có quy tắc (paraphrase, bẫy, từ nối, giữ nhịp), sửa nhanh hơn học lại từ đầu.</li><li>Điều kiện: học đủ thời gian mỗi ngày, chữa mọi câu sai trong Sổ lỗi, làm đúng các mốc đo lại.</li>
       ${PL.W >= 3 ? `<li>Mốc kiểm tra: giữa lộ trình (tuần ${Math.max(1, Math.floor(PL.W / 2) - (PL.W >= 6 ? 1 : 0)) + 1}) điểm Part yếu nhất nên tăng ≥ 10 điểm %. Nếu không tăng, nên cân nhắc lùi ngày thi 2-4 tuần.</li>` : ''}</ul></div>
 
-    <div class="sec-h sec"><div><div class="kicker">7</div><h2 class="h2">Lộ trình ${PL.W} tuần tới ngày thi</h2></div><button class="btn pri sm" id="rp-apply">${icon('check')} Dùng lộ trình này</button></div>
+    <div class="sec-h sec"><div><div class="kicker">7</div><h2 class="h2">Lộ trình ${PL.W} tuần tới ngày thi</h2></div>${using ? `<span class="pill sage">${icon('check')} Đang dùng lộ trình này</span>` : '<button class="btn pri sm" id="rp-apply">Dùng lộ trình này</button>'}</div>
     <div class="card"><div class="rp-phases">${[1, 2, 3].filter(ph => PL.weeks.some(w => w.ph === ph)).map(ph => `<span class="rp-ph ph${ph}">Giai đoạn ${ph}: ${phName[ph]} · ${PL.weeks.filter(w => w.ph === ph).length} tuần</span>`).join('')}</div>
+      <div class="small" style="margin:8px 0 0">${using ? 'Trang Hôm nay nhắc việc của tuần hiện tại. Part ưu tiên trong Lộ trình được đặt theo kết quả bài này (thay cho lựa chọn lúc đăng ký), đổi được trong Hồ sơ.' : ''}</div>
       <div class="small muted" style="margin:8px 0 12px">Việc hằng ngày, mọi tuần: ${DAILY.map(([h, t, d]) => `<a href="${h}">${esc(t)}</a> (${d})`).join(' · ')}</div>
       <div class="rp-tl">${PL.weeks.map(w => `<div class="rp-wk ph${w.ph}"><div class="rp-wh"><b>Tuần ${w.w}</b><span class="small muted">${fmtD(w.from)} - ${fmtD(w.to)}</span></div><div class="rp-wt">${w.tasks.map(([h, t, k]) => `<a class="rp-task" href="${h}">${icon('arrow')} ${esc(t)}${k && TOPICS[k] && k === top.k ? ' <span class="pill red">chuyên đề</span>' : ''}</a>`).join('')}${w.check ? `<a class="rp-task chk" href="${w.check[0]}">${icon('target')} ${esc(w.check[1])}</a>` : ''}</div></div>`).join('')}
         <div class="rp-wk end"><div class="rp-wh"><b>Ngày thi</b><span class="small muted">${PL.end.toLocaleDateString('vi-VN')}</span></div><div class="rp-wt small">Tuần cuối: ngủ đủ, làm nhẹ 1 đề Part 2 + Part 5 để giữ nhịp, đọc lại các quy tắc trong Sổ lỗi.</div></div></div></div>
     <div class="row sec"><a class="btn" href="#/errors">${icon('err')} Sổ lỗi</a><a class="btn" href="#/tests">Đề từng Part</a><a class="btn" href="#/today">Về Hôm nay</a></div></div>`;
 
   // ---- tương tác
+  const ap = $('#rp-apply', view);
   const pk = $('#rp-pick', view); if (pk) pk.onchange = () => X.go('#/report/' + pk.value);
   $('#rp-print', view).onclick = () => { $$('details.rp-part', view).forEach(d => d.open = true); setTimeout(() => window.print(), 60); };
   $$('[data-rv]', view).forEach(b => b.onclick = () => X.ptReview(view, +b.dataset.rv, rec, () => render(view, i)));
   $$('.rp-n[data-q]', view).forEach(b => b.onclick = () => { const n = +b.dataset.q, it = A.items[n - 1]; X.ptReview(view, it.part, rec, () => render(view, i)); setTimeout(() => { const sb = $(`#rv-sheet [data-j="${n - X.PT.find(e => e.part === it.part).start}"]`, view); if (sb) sb.click(); }, 30); });
   $('#rp-edit', view).onclick = ev => { ev.preventDefault(); const box = $('#rp-editbox', view); box.hidden = !box.hidden;
     box.innerHTML = `<label><span class="small">Điểm mục tiêu</span><select id="rp-aim">${[450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950].map(v => `<option ${v === rec.aim ? 'selected' : ''}>${v}</option>`).join('')}</select></label><label><span class="small">Ngày thi</span><input type="date" id="rp-date" value="${esc(rec.date || '')}"></label><label><span class="small">Tự học mỗi ngày</span><select id="rp-min">${[[30, '30 phút'], [60, '1 tiếng'], [90, '1 tiếng 30'], [120, '2 tiếng'], [180, '3 tiếng']].map(([v, n]) => `<option value="${v}" ${v === rec.min ? 'selected' : ''}>${n}</option>`).join('')}</select></label><button class="btn pri sm" id="rp-save">Cập nhật</button>`;
-    $('#rp-save', view).onclick = () => { rec.aim = +$('#rp-aim', view).value; rec.date = $('#rp-date', view).value; rec.min = +$('#rp-min', view).value; Object.assign(S().profile, { aim: rec.aim, examDate: rec.date, studyMin: rec.min }); X.save(); render(view, i); }; };
-  $('#rp-apply', view).onclick = () => {
-    const P = S().profile, map = { para: 'p34', implied: 'p34', end: 'p34', p2: 'p2', rel: 'p6', gram: 'p5', multi: 'p7' };
-    const pick = [...new Set(order.map(k => map[k]).filter(Boolean))].slice(0, 2);
-    P.focus = [...(P.focus || []).filter(k => k === 'nen' || k === 'hieu'), ...pick]; P.ptPlan = { at: Date.now(), rec: i }; X.save();
-    X.toast('Đã lưu. Trang Hôm nay sẽ nhắc việc của tuần này.'); };
+    $('#rp-save', view).onclick = () => { rec.aim = +$('#rp-aim', view).value; rec.date = $('#rp-date', view).value; rec.min = +$('#rp-min', view).value; Object.assign(S().profile, { aim: rec.aim, examDate: rec.date, studyMin: rec.min }); if (using) applyPlan(i, order); X.save(); render(view, i); }; };
+  if (ap) ap.onclick = () => { applyPlan(i, order); X.toast('Đã lưu. Trang Hôm nay và Lộ trình đi theo kết quả bài này.'); render(view, i); };
 }
 document.addEventListener('click', e => { const t = e.target.closest('.pt-today [data-href]'); if (t) { e.preventDefault(); e.stopPropagation(); location.hash = t.dataset.href; } }, true);
 X.route(/^\/report(?:\/(\d+))?$/, (view, n) => render(view, n == null ? null : +n));

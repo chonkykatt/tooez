@@ -150,25 +150,29 @@ function suggestLab() {
 }
 
 function onboarding(view) {
+  const P0 = S().profile, pt = (S().placement || []).length && P0.ptPlan;
   view.innerHTML = `<div class="page">${X.xiSay('happy', 'Chào bạn! Mình là <b>Tooez</b>, chú mèo học bá đi cùng bạn. Mình sẽ tìm chỗ hổng và giao bài mỗi ngày.', 110)}<h1 class="h1" style="margin-top:10px">Chào mừng đến TOOEZ!</h1>
     <p class="lead">Chẩn đoán trước, luyện đúng chỗ yếu, đo bằng năng lực thật chứ không đếm số bài đã làm. Điền vài thông tin để hệ thống sắp nhiệm vụ mỗi ngày cho bạn.</p>
     <div class="card sec" style="max-width:640px"><div class="grid g2">
       <div class="field"><label>Tên của bạn</label><input class="inp" id="ob-name" placeholder="VD: Doanh"></div>
-      <div class="field"><label>Ngày thi dự kiến</label>${dmy('id="ob-date"', '')}</div>
+      ${pt ? '' : `<div class="field"><label>Ngày thi dự kiến</label>${dmy('id="ob-date"', '')}</div>
       <div class="field"><label>Điểm hiện tại (ước tính)</label><input class="inp" id="ob-cur" placeholder="VD: 600"></div>
-      <div class="field"><label>Điểm mục tiêu</label><input class="inp" id="ob-tar" placeholder="VD: 800"></div>
+      <div class="field"><label>Điểm mục tiêu</label><input class="inp" id="ob-tar" placeholder="VD: 800"></div>`}
     </div>
-    <div class="field" style="margin-top:14px"><label>Bạn muốn ưu tiên gì? <span class="faint" style="font-weight:500">Nên chọn Nền tảng + 1-2 Part</span></label>
+    ${pt ? `<div class="card tint small" style="margin-top:14px">${icon('check')} Bạn đã làm bài chuẩn: điểm ~${esc(P0.current || '?')}, mục tiêu ${esc(P0.target || '?')}${P0.examDate ? `, thi ngày ${esc(new Date(P0.examDate + 'T00:00:00').toLocaleDateString('vi-VN'))}` : ''}. Part ưu tiên và thời gian học mỗi ngày đã được đặt theo báo cáo, không cần chọn lại. <a href="#/report">Xem báo cáo</a></div>` : ''}
+    ${pt ? '' : `<div class="field" style="margin-top:14px"><label>Bạn muốn ưu tiên gì? <span class="faint" style="font-weight:500">Nên chọn Nền tảng + 1-2 Part</span></label>
       <div id="ob-focus">${[['Nền tảng chung', X.TRACKS.filter(t => t.layer < 3), 'g2'], ['Theo Part', X.TRACKS.filter(t => t.layer === 3), 'g3']].map(([h, ts, g]) => `<div class="pick-h">${h}</div><div class="pick ${g}">${ts.map(p => `<button type="button" data-k="${p.k}" class="pick-o ${['nen', 'p2', 'p34'].includes(p.k) ? 'on' : ''}"><span class="pick-ck">${icon('check')}</span><b>${esc(p.n)}</b><small>${esc(p.vi)}</small></button>`).join('')}</div>`).join('')}</div></div>
-    <div class="field" style="margin-top:6px"><label>Mỗi ngày học khoảng</label><div class="seg" id="ob-goal"><button data-v="30">20 phút</button><button data-v="60" class="on">40 phút</button><button data-v="100">60+ phút</button></div></div>
+    <div class="field" style="margin-top:6px"><label>Mỗi ngày học khoảng</label><div class="seg" id="ob-goal"><button data-v="30">20 phút</button><button data-v="60" class="on">40 phút</button><button data-v="100">60+ phút</button></div></div>`}
     <div class="row" style="margin-top:22px"><button class="btn pri lg" id="ob-go">Bắt đầu học ${icon('arrow')}</button></div></div></div>`;
   $$('#ob-focus button', view).forEach(b => b.onclick = () => b.classList.toggle('on'));
   $$('#ob-goal button', view).forEach(b => b.onclick = () => { $$('#ob-goal button', view).forEach(x => x.classList.remove('on')); b.classList.add('on'); });
   $('#ob-go', view).onclick = () => {
     const name = $('#ob-name', view).value.trim(); if (!name) { $('#ob-name', view).focus(); return; }
-    const p = S().profile; p.name = name; p.examDate = $('#ob-date', view).value; p.current = $('#ob-cur', view).value.trim(); p.target = $('#ob-tar', view).value.trim();
-    p.focus = $$('#ob-focus button.on', view).map(b => b.dataset.k); if (!p.focus.length) p.focus = ['p2'];
-    p.dailyGoal = +$('#ob-goal button.on', view).dataset.v; X.save(); X.render();
+    const p = S().profile; p.name = name;
+    if (!pt) { p.examDate = $('#ob-date', view).value; p.current = $('#ob-cur', view).value.trim(); p.target = $('#ob-tar', view).value.trim();
+      p.focus = $$('#ob-focus button.on', view).map(b => b.dataset.k); if (!p.focus.length) p.focus = ['p2'];
+      p.dailyGoal = +$('#ob-goal button.on', view).dataset.v; }
+    X.save(); X.render();
   };
 }
 

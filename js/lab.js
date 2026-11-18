@@ -288,7 +288,9 @@ function rounds(L) {
   switch (L.kind) {
     case 'pairs': {
       const all = [...new Set(items.map(x => x.a))];
-      const rs = asListen(items.map((x, i) => { const opts = shuffle([x.a, ...pickDistract(x.a, all, L.id === 'p5-pattern')]); return { key: 'p' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts, a: opts.indexOf(x.a), after: `${esc(x.q)} → <b>${esc(x.a)}</b>` }; }));
+      // mục có nhóm nghĩa (c): đáp án nhiễu chỉ lấy từ nhóm khác, để không có 2 đáp án cùng đúng
+      const pool = x => x.c ? [...new Set(items.filter(y => y.c !== x.c).map(y => y.a))] : all;
+      const rs = asListen(items.map((x, i) => { const opts = shuffle([x.a, ...pickDistract(x.a, pool(x), L.id === 'p5-pattern')]); return { key: 'p' + i, q: `<div class="flash">${esc(x.q)}</div>`, opts, a: opts.indexOf(x.a), after: `${esc(x.q)} → <b>${esc(x.a)}</b>` }; }));
       (L.extra || []).forEach((x, i) => rs.push({ key: 'e' + i, q: `<div class="flash">${esc(x.q)}</div><div class="small muted" style="text-align:center;margin-top:-18px">Chọn từ cùng nghĩa</div>`, opts: x.opts, a: x.a, after: `${esc(x.q)} ≈ <b>${esc(x.opts[x.a])}</b>` }));
       return rs;
     }

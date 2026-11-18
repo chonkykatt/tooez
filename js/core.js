@@ -80,9 +80,11 @@ const mergeArr = (a, b) => {
   b.forEach(x => { const k = akey(x), y = m.get(k); if (y === undefined) m.set(k, x); else if (isObj(x) && isObj(y) && stamp(x) > stamp(y)) m.set(k, x); });
   return [...m.values()];
 };
+const BADK = new Set(['__proto__', 'constructor', 'prototype']);
 const merge = (dst, src, path = '') => {
   if (!isObj(src)) return dst;
   for (const k of Object.keys(src)) {
+    if (BADK.has(k)) continue;   // chặn "__proto__" trong link / file sao lưu sửa tay làm hỏng mọi đối tượng trên trang
     const a = dst[k], b = src[k], p = path + '.' + k;
     if (a === undefined) dst[k] = b;
     else if (Array.isArray(a) && Array.isArray(b)) dst[k] = mergeArr(a, b);
@@ -130,7 +132,8 @@ X.resetAll = () => { const r = S._rev || 0; adopt(DEF()); S._rev = r; write(); }
 X.exportData = () => JSON.stringify(S);
 // xin trình duyệt đừng tự xóa dữ liệu khi máy đầy bộ nhớ hoặc lâu không mở (không phải trình duyệt nào cũng đồng ý)
 try { navigator.storage && navigator.storage.persist && navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist(); }); } catch (e) {}
-const parseBackup = txt => { const d = typeof txt === 'string' ? JSON.parse(txt) : txt; if (!d || !d.v) throw new Error('File không đúng định dạng'); return d; };
+// đọc lại qua JSON và bỏ các khóa nguy hiểm ở mọi cấp (dữ liệu có thể đến từ link #/nhan hay file người khác gửi)
+const parseBackup = txt => { const d = JSON.parse(typeof txt === 'string' ? txt : JSON.stringify(txt), (k, v) => BADK.has(k) ? undefined : v); if (!d || !d.v) throw new Error('File không đúng định dạng'); return d; };
 // khôi phục từ file: thay hẳn bằng bản trong file (như trước)
 X.importData = txt => { const d = parseBackup(txt), r = S._rev || 0; adopt(d); S._rev = r; write(); };
 // gộp thêm (dùng khi chuyển tiến độ từ trình duyệt / địa chỉ khác sang): giữ cả bài ở đây lẫn bài mang sang

@@ -1438,7 +1438,7 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .err.cmp.open .err-body>.top{padding-right:34px}
 .dmy select.inp{padding:9px 2px 9px 8px;min-width:0;flex:1}.dmy select[data-dmy=y]{flex:1.35}
 /* đăng nhập nổi bật */
-.acct-side{display:grid;gap:4px;margin:12px 4px 4px;padding:12px;border-radius:14px;border:2px solid var(--syn);background:var(--syn-soft);text-decoration:none;color:var(--ink)}
+.acct-side{display:grid;gap:4px;margin:0 4px 14px;padding:12px;border-radius:14px;border:2px solid var(--syn);background:var(--syn-soft);text-decoration:none;color:var(--ink)}
 .acct-side b{font-size:14px}
 .acct-side small{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
 .acct-side .as-btns{display:flex;gap:6px;margin-top:6px}
@@ -1470,7 +1470,7 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .lg-menu button{border:0;background:none;text-align:left;padding:10px 12px;border-radius:8px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;color:var(--ink)}
 .lg-menu button:hover{background:var(--paper-dim)}
 .lg-dd.full{display:block}.lg-dd.full>summary{width:100%;justify-content:center}.lg-dd.full .lg-menu{right:0}
-.acct-side.off{border:0;background:none;padding:0;margin:12px 4px 4px}
+.acct-side.off{border:0;background:none;padding:0;margin:0 4px 14px}   /* cách đều khung mèo ở trên và mục Giới thiệu ở dưới */
 .lg-corner{display:flex;justify-content:flex-end;align-items:center;gap:8px}
 .hello .lg-corner.in-hello{margin-left:auto;align-self:flex-start}
 @media (max-width:980px){.hello .lg-corner.in-hello{display:none}}
@@ -1496,7 +1496,7 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 .sd-pic span{color:var(--ink-soft)}
 .sd-pic.off{opacity:.5}
 .sd-pic i.pill{position:absolute;top:12px;right:12px;font-style:normal}
-.acct-side.soan-link{display:flex;align-items:center;gap:8px;border-color:var(--gold);background:var(--gold-soft);color:var(--ink);text-decoration:none;margin-bottom:0}
+.acct-side.soan-link{display:flex;align-items:center;gap:8px;border-color:var(--gold);background:var(--gold-soft);color:var(--ink);text-decoration:none;margin-bottom:8px}
 .sd-sub{border-left:3px solid var(--syn-soft);padding-left:12px;margin:6px 0;display:grid;gap:4px}
 .sd-aud{margin:0 0 12px;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .sd-aline{gap:8px;margin:3px 0;flex-wrap:nowrap}.sd-aline .grow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -220,6 +220,11 @@ X.route(/^\/vocab\/nho\/([\w-]+)$/, (view, id) => {
           <div class="rl-sent sm">${blankHtml(w, true)}</div><div class="small muted">Đã đưa <b>${esc(w.w)}</b> vào lịch ôn. Vài hôm nữa nó sẽ quay lại để bạn nhớ lâu.</div>
           <div class="row" style="gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap"><a class="btn pri" href="#/vocab/nho/${esc(nextW.id)}">Từ tiếp theo: ${esc(nextW.w)} ${icon('arrow')}</a><button class="btn" id="rl-again">Xem lại từ đầu</button><a class="btn ghost" href="#/vocab/nho">Danh sách</a></div>`;
         $('#rl-again', body).onclick = () => go(0); body.scrollTop = 0;
+        // thêm: tự tạo ra (output) - nói lại câu khi chữ đã ẩn, tự đặt câu của mình; lưu vào Sổ câu
+        if (X.outTask) { $('#rl-fb', body).insertAdjacentHTML('beforeend', `<div class="rl-outh small">Muốn nhớ chắc hơn? Tự tạo ra:</div><div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn sm" id="rl-o-say">🎤 Nói lại câu</button><button class="btn sm" id="rl-o-own">📝 Tự đặt câu</button></div><div id="rl-out" class="rl-out"></div>`);
+          const out = $('#rl-out', body), run = t => { X.outTask(out, t, r => { out.innerHTML = `<div class="small">${r.ok ? '✓ Tốt lắm! Từ này sẽ ở lại lâu hơn.' : 'Chưa sao, lần ôn sau sẽ quen hơn.'}</div>`; }); out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
+          $('#rl-o-say', body).onclick = () => { $$('#rl-fb .rl-sent', body).forEach(e => e.remove()); run({ t: 'says', w: wordOf(w), s: full(w), vi: 'Nghe rồi nói lại câu vừa học' }); };
+          $('#rl-o-own', body).onclick = () => run({ t: 'own', w: wordOf(w) }); }
         sayEn(full(w), 'W');
       };
       const check = () => { if (!inp.value.trim()) return; tries++; if (typeOk(inp.value, w.ans) || typeOk(inp.value, w.w)) return finish(true);

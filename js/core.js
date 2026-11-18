@@ -209,7 +209,7 @@ X.srsReview = (wid, grade, type) => {
   // levels: 1 nhận ra, 2 hiểu (2 kiểu bài), 3 nhớ chủ động (gõ lại đúng), 4 thành thạo (S>=21 ngày & đã nhớ chủ động)
   let lvl = grade > 1 ? Math.max(1, w.lvl) : Math.min(w.lvl, 2);
   if (w.types.length >= 2 && grade > 1) lvl = Math.max(lvl, 2);
-  if (type === 'type' && grade > 1) lvl = Math.max(lvl, 3);
+  if ((type === 'type' || type === 'say' || type === 'use') && grade > 1) lvl = Math.max(lvl, 3);   // tự gõ / tự nói / tự đặt câu = nhớ chủ động
   if (lvl >= 3 && w.s >= 21) lvl = 4;
   w.lvl = lvl; save(); return w;
 };

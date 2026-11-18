@@ -1,7 +1,13 @@
+# CSP đặt ở header (KHÔNG đặt bằng <meta> trong index.html): thẻ <meta> CSP làm Chrome tắt tải trước,
+# 47 file JS phải tải lần lượt từng file → trang mở chậm gấp ~5 lần (đo: 16 giây so với 3 giây khi mạng trễ 300 ms).
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/ https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/ https://gc.zgo.at https://youglish.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://youglish.com https://i.ytimg.com https://vahbevhlqwvrrinjwnen.supabase.co https://*.googleusercontent.com https://tooez.goatcounter.com; media-src 'self' data: blob: https://vahbevhlqwvrrinjwnen.supabase.co; connect-src 'self' https://youglish.com https://vahbevhlqwvrrinjwnen.supabase.co wss://vahbevhlqwvrrinjwnen.supabase.co https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/ https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/ https://huggingface.co https://*.huggingface.co https://*.hf.co https://tooez.goatcounter.com https://gc.zgo.at; worker-src 'self' blob:; frame-src https://youglish.com https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# audio đặt tên theo mã băm của câu đọc → nội dung không bao giờ đổi, cho trình duyệt nhớ hẳn 1 năm
+/audio/*
+  Cache-Control: public, max-age=31536000, immutable

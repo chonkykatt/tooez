@@ -11,3 +11,12 @@
 # audio đặt tên theo mã băm của câu đọc → nội dung không bao giờ đổi, cho trình duyệt nhớ hẳn 1 năm
 /audio/*
   Cache-Control: public, max-age=31536000, immutable
+
+# js/css/data luôn được gọi kèm ?v=... trong index.html → cho trình duyệt nhớ 1 năm, lần sau mở web không phải hỏi lại 47 file.
+# Sửa code thì nhớ đổi số ?v= trong index.html (index.html luôn được tải mới).
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+/data/*
+  Cache-Control: public, max-age=31536000, immutable

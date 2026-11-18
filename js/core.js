@@ -240,11 +240,12 @@ X.itemById = Object.fromEntries(X.BANK.map(i => [i.id, i]));
 X.wordById = Object.fromEntries(X.VOCAB.map(w => [w.id, w]));
 
 const loaded = {};
+X.VER = ((document.querySelector('script[src*="js/core.js"]') || {}).src || '').split('v=')[1] || String(Date.now());   // phiên bản web: file tải sau cũng đổi tên khi cập nhật
 X.loadKnowledge = pk => new Promise((res, rej) => {
   const v = 'K_' + pk.toUpperCase();
   if (window[v]) return res(window[v]);
   if (loaded[pk]) return loaded[pk].then(res, rej);
-  loaded[pk] = new Promise((r2, j2) => { const s = document.createElement('script'); s.src = `data/k/${pk}.js`; s.onload = () => r2(window[v]); s.onerror = j2; document.head.appendChild(s); });
+  loaded[pk] = new Promise((r2, j2) => { const s = document.createElement('script'); s.src = `data/k/${pk}.js?v=${X.VER}`; s.onload = () => r2(window[v]); s.onerror = j2; document.head.appendChild(s); });
   loaded[pk].then(res, rej);
 });
 

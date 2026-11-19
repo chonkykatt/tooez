@@ -226,6 +226,10 @@ function learnStage(view, d, P, head) {
 const markRanges = (text, R) => { R = R.filter(r => r.s >= 0).sort((a, b) => a.s - b.s); let out = '', p = 0;
   R.forEach(r => { if (r.s < p) return; out += esc(text.slice(p, r.s)) + `<mark class="${r.cls}" ${r.attr || ''}>${esc(text.slice(r.s, r.e))}</mark>`; p = r.e; }); return out + esc(text.slice(p)); };
 const findCI = (text, s) => text.toLowerCase().indexOf(s.toLowerCase());
+let drLines = null, drRO = null, drRaf = 0;
+const drRedraw = () => { if (drRaf) return; drRaf = requestAnimationFrame(() => { drRaf = 0; if (drLines && document.getElementById('dr-lines')) drLines(); }); };
+window.addEventListener('scroll', drRedraw, true); window.addEventListener('resize', drRedraw);
+const drWatch = el => { if (drRO) drRO.disconnect(); drRO = null; if (el && window.ResizeObserver) { drRO = new ResizeObserver(drRedraw); drRO.observe(el); } };
 function backStage(view, d, P, Q, head) {
   P.ans = P.ans || {}; P.tr = P.tr || {};
   const IT = Object.values(P.sel), wide = () => window.innerWidth >= 980;
@@ -271,17 +275,25 @@ function backStage(view, d, P, Q, head) {
     const fin = $('#dr-fin', view); if (fin) fin.onclick = () => { P.stage = 'done'; X.save(); X.go(`#/doc/${d.id}/done`); };
     // bấm 1 cặp → nháy chỗ tương ứng trong bài
     $$('[data-jump],[data-pq]', view).forEach(el => el.onclick = () => { const k = el.dataset.jump || el.dataset.pq, t = $(`[data-pp="${k}"]`, view); if (!t) return; if (!wide()) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); });
-    lines();
+    lines(); drWatch($('#dr-split', view));
   };
-  // vẽ đường nối giữa cụm ở câu hỏi và cụm ở bài (màn hình rộng, 2 cột)
+  // vẽ đường nối giữa cụm ở câu hỏi và cụm ở bài (màn hình rộng, 2 cột).
+  // Đi từ mép phải khung bài đọc sang mép trái ô đáp án, ngang với từng cụm → không gạch qua chữ.
+  // Khung bài đọc dính (sticky) còn lớp vẽ cuộn theo trang, nên cuộn / đổi cỡ là phải vẽ lại.
   const lines = () => { const svg = $('#dr-lines', view), wrap = $('#dr-split', view); if (!svg || !wrap) return; svg.innerHTML = '';
-    if (!wide()) return; const W = wrap.getBoundingClientRect(); svg.setAttribute('width', W.width); svg.setAttribute('height', wrap.scrollHeight); svg.setAttribute('viewBox', `0 0 ${W.width} ${wrap.scrollHeight}`);
-    $$('[data-pq]', view).filter(a => a.dataset.pq.startsWith(act + '-')).forEach(a => { const b = $(`[data-pp="${a.dataset.pq}"]`, view); if (!b) return; const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-      const x1 = rb.right - W.left, y1 = rb.top + rb.height / 2 - W.top, x2 = ra.left - W.left, y2 = ra.top + ra.height / 2 - W.top, mx = (x1 + x2) / 2;
-      const col = getComputedStyle(a).getPropertyValue('--plc') || '#6D4AFF';
-      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`); p.setAttribute('fill', 'none'); p.setAttribute('stroke', col.trim() || '#6D4AFF'); p.setAttribute('stroke-width', '1.6'); p.setAttribute('opacity', '.75'); svg.appendChild(p); }); };
-  const onR = () => { if (!view.isConnected || !$('#dr-lines', view)) { window.removeEventListener('resize', onR); window.removeEventListener('scroll', onR, true); return; } lines(); };
-  window.addEventListener('resize', onR); window.addEventListener('scroll', onR, true);
+    if (!wide()) return; const W = wrap.getBoundingClientRect(), L = $('#dr-pass', view).getBoundingClientRect(), H = wrap.scrollHeight;
+    svg.setAttribute('width', W.width); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W.width} ${H}`);
+    const NS = 'http://www.w3.org/2000/svg', mk = (tag, at) => { const e = document.createElementNS(NS, tag); Object.entries(at).forEach(([k, v]) => e.setAttribute(k, v)); svg.appendChild(e); return e; };
+    $$('[data-pq]', view).filter(a => a.dataset.pq.startsWith(act + '-')).forEach(a => { const b = $(`[data-pp="${a.dataset.pq}"]`, view); if (!b) return;
+      const first = el => el.getClientRects()[0] || el.getBoundingClientRect(), ra = first(a), rb = first(b), box = (a.closest('.opt') || a.closest('.dr-qq') || a).getBoundingClientRect();
+      const yb = rb.top + rb.height / 2; if (yb < L.top + 4 || yb > L.bottom - 4) return;   // cụm trong bài đang bị cuộn khuất khỏi khung bài đọc
+      const x1 = L.right - W.left, y1 = yb - W.top, x2 = box.left - W.left, y2 = ra.top + ra.height / 2 - W.top, mx = (x1 + x2) / 2;
+      const col = (getComputedStyle(a).getPropertyValue('--plc') || '').trim() || '#6D4AFF';
+      mk('path', { d: `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`, fill: 'none', stroke: col, 'stroke-width': '1.6', opacity: '.75' });
+      [[x1, y1], [x2, y2]].forEach(([cx, cy]) => mk('circle', { cx, cy, r: '3.5', fill: col, opacity: '.9' }));
+    }); };
+  // một bộ lắng nghe dùng chung cho cả trang (không gắn lại mỗi lần vẽ, không tự gỡ khi đang ở bước Tự dịch)
+  drLines = lines;
   paint();
 }
 

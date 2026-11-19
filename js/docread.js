@@ -52,7 +52,7 @@ const itemOf = (d, pi, seg) => {
 // at = mốc lần sửa cuối: khi đồng bộ giữa các máy, bản mới hơn thay cả bài (không trộn danh sách từ / vòng học cũ vào, không làm "Làm lại" bị hoàn tác)
 let curP = null;
 const prog = id => { const st = S(); st.dr = st.dr || {}; return (curP = st.dr[id] || (st.dr[id] = { sel: {}, stage: 'read', at: Date.now() })); };
-const drSave = () => { if (curP) curP.at = Date.now(); drSave(); };
+const drSave = () => { if (curP) curP.at = Date.now(); X.save(); };
 
 /* ---------- danh sách bài ---------- */
 X.route(/^\/doc$/, view => {

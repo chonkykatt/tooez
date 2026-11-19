@@ -7,8 +7,10 @@ const { $, $$, esc, icon, pct, fmtMs, fmtDate, LETTERS, TTS } = X;
 const S = () => X.S();
 const G = p => (window.EXAM_GUIDE || {})[p] || { real: '', rules: [], fix: [] };
 (window.EXAM_EXTRA || []).forEach(it => { X.itemById[it.id] = it; });   // chỉ dùng trong đề, không trộn vào Lab
-X.EXAMS = window.EXAMS || [];
-const exById = id => X.EXAMS.find(e => e.id === id);
+const ALLEX = window.EXAMS || [];
+X.EXAMS = ALLEX.filter(e => !e.hidden);   // đề lẻ từng Part (hiện ở trang Đề thi)
+X.PT = ALLEX.filter(e => e.hidden).sort((a, b) => a.part - b.part);   // bài chuẩn đầu vào 200 câu (data/placement.js), chỉ làm trong /fulltest
+const exById = id => ALLEX.find(e => e.id === id);
 const LISTEN = p => p <= 4;
 
 X.examItems = e => {
@@ -32,7 +34,8 @@ X.route(/^\/tests$/, view => {
   const fh = S().tests.full || [], fr = S().fullRun, frOpen = fr && fr.i > 0 && fr.i < 7 && !fr.saved;
   view.innerHTML = `<div class="page">${X.stepHead('do')}<div class="kicker">Đề thi</div><h1 class="h1">Đo trình độ như thi thật, rồi chữa đến nơi đến chốn</h1>
     <p class="lead">Mỗi đề đúng số câu, đúng thứ tự và đúng nhịp của đề thật. Phần nghe chạy một lượt, không nghe lại. Phần đọc đếm ngược theo giờ. Làm xong có điểm, phân tích dạng sai và hướng dẫn chữa từng câu.</p>
-    <a class="card link sec row ft-hero" href="#/fulltest" style="gap:16px">${X.xi('wow', 64, 'static')}<div class="grow"><div class="kicker syn">${fh.length ? 'Thi lại cả bài' : 'Nên làm trước tiên'}</div><div class="h2" style="margin:2px 0 4px">Bài thi đầu vào 200 câu</div><div class="small muted">Đủ 7 Part, khoảng 2 tiếng. Xong bài có điểm từng Part, ước tính điểm TOEIC và gợi ý nên học Part nào trước. Mỗi Part tự lấy đề bạn chưa làm.${frOpen ? ' <b>Bạn đang làm dở.</b>' : fh.length ? ` Lần gần nhất ~${fh[fh.length - 1].est} điểm.` : ''}</div></div><span class="btn pri">${frOpen ? 'Làm tiếp' : 'Vào thi'} ${icon('arrow')}</span></a>
+    <a class="card link sec row ft-hero" href="#/fulltest" style="gap:16px">${X.xi('wow', 64, 'static')}<div class="grow"><div class="kicker syn">${fh.length ? 'Thi lại cả bài' : 'Nên làm trước tiên'}</div><div class="h2" style="margin:2px 0 4px">Bài thi đầu vào 200 câu</div><div class="small muted">Đủ 7 Part, khoảng 2 tiếng, đúng cấu trúc đề thật. Xong bài có báo cáo phân tích tới từng câu, chuyên đề cho lỗi lớn nhất và lộ trình theo tuần tới ngày thi.${frOpen ? ' <b>Bạn đang làm dở.</b>' : fh.length ? ` Lần gần nhất ~${fh[fh.length - 1].est} điểm.` : ''}</div></div><span class="btn pri">${frOpen ? 'Làm tiếp' : 'Vào thi'} ${icon('arrow')}</span></a>
+    ${(S().placement || []).length ? (() => { const r = S().placement[S().placement.length - 1]; return `<a class="card link sec row" href="#/report" style="gap:14px">${icon('chart')}<div class="grow"><b>Báo cáo bài chuẩn và lộ trình của bạn</b><div class="small muted">Làm ngày ${new Date(r.at).toLocaleDateString('vi-VN')} · ~${r.L + r.R} điểm · mục tiêu ${r.aim}</div></div><span class="btn sm">Xem ${icon('arrow')}</span></a>`; })() : ''}
     ${X.scoreCard()}
     <div class="sec-h sec" style="margin-bottom:0"><div><div class="kicker">Hoặc</div><h2 class="h2">Đo riêng từng Part</h2></div><span class="small muted">${done ? `Đã làm ${done}/${X.EXAMS.length} đề.` : 'Mỗi Part có 2 đề. Làm Đề 1 trước khi học, Đề 2 sau 2-3 tuần để xem tiến bộ.'}</span></div>
     ${parts.map(p => { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) return ''; const pp = X.partOf(p);
@@ -271,11 +274,21 @@ function review(view, e, items, res, onBack) {
   render();
 }
 
+/* chữa từng câu của bài chuẩn từ bản ghi gọn trong S().placement (báo cáo gọi tới) */
+X.ptReview = (view, part, rec, onBack) => {
+  const e = X.PT.find(x => x.part === part); if (!e) return;
+  const all = X.ptItems(), items = X.examItems(e), off = all.indexOf(items[0]);
+  const rows = items.map((it, k) => { const ch = rec.a[off + k]; return { item: { ...it, num: e.start + k }, chosen: ch == null ? null : ch, ok: ch === it.answer, ms: (rec.t[off + k] || 0) * 1000, conf: ({ s: 'sure', u: 'unsure', g: 'guess' })[rec.c[off + k]] || null }; });
+  review(view, e, items, { rows, total: items.length, correct: rows.filter(r => r.ok).length }, onBack);
+};
+
 /* số liệu đề cho trang Hôm nay: Part trọng tâm nào chưa có đề, hoặc đề gần nhất đã quá 21 ngày */
 X.examSuggest = () => {
   const s = S(), focus = (s.profile.focus || []).map(k => X.PARTS.find(p => p.k === k)).filter(Boolean).flatMap(p => p.parts);
   const fr = s.fullRun, fh = s.tests.full || [];
   if (fr && fr.i > 0 && fr.i < 7 && !fr.saved) return { full: true, title: 'Làm tiếp bài thi 200 câu', why: `Đang dở ở Part ${(FULL(fr)[fr.i] || {}).part || ''}` };
+  const pl = s.placement || [], lastPt = pl[pl.length - 1];
+  if (lastPt && Date.now() - lastPt.at < 21 * 864e5) return null;   // vừa làm bài chuẩn: đã có số liệu mọi Part, chưa cần đo lại
   const anyExam = X.EXAMS.some(e => history(e.id).length);
   if (!fh.length && !anyExam) return { full: true, first: true, title: 'Bài thi đầu vào 200 câu', why: 'Làm 1 lần đủ 7 Part để biết mình yếu ở đâu, rồi chọn Part học trước' };
   if (fh.length && Date.now() - fh[fh.length - 1].at > 28 * 864e5) return { full: true, title: 'Thi lại 200 câu', why: `Lần trước ~${fh[fh.length - 1].est} điểm, đã hơn 4 tuần. Đo lại xem tiến bộ` };
@@ -296,7 +309,7 @@ const TBL = { L: [[0, 5], [10, 5], [20, 60], [30, 110], [40, 165], [50, 220], [6
 const conv = (raw, t) => { for (let i = 1; i < t.length; i++) if (raw <= t[i][0]) { const [x0, y0] = t[i - 1], [x1, y1] = t[i]; return Math.round((y0 + (y1 - y0) * (raw - x0) / (x1 - x0)) / 5) * 5; } return 495; };
 X.estimateScore = () => {
   const acc = {};
-  [1, 2, 3, 4, 5, 6, 7].forEach(p => { const runs = X.EXAMS.filter(e => e.part === p).flatMap(e => history(e.id)).sort((a, b) => b.at - a.at); if (runs.length) acc[p] = runs[0].score / 100; });
+  [1, 2, 3, 4, 5, 6, 7].forEach(p => { const runs = ALLEX.filter(e => e.part === p).flatMap(e => history(e.id)).sort((a, b) => b.at - a.at); if (runs.length) acc[p] = runs[0].score / 100; });
   const sec = parts => { const have = parts.filter(p => acc[p] != null); if (!have.length) return null;
     const mean = have.reduce((a, p) => a + acc[p] * QN[p], 0) / have.reduce((a, p) => a + QN[p], 0);
     return Math.round(parts.reduce((a, p) => a + (acc[p] != null ? acc[p] : mean) * QN[p], 0)); };
@@ -318,26 +331,45 @@ X.scoreCard = () => {
 let fullMem = {};   // bài làm + kết quả trong phiên này, để chữa từng câu (không lưu vào bộ nhớ máy vì quá nặng)
 // mỗi Part chọn đề học sinh CHƯA làm (kể cả làm lẻ ở trang Đề thi); hết đề mới thì lấy đề làm lâu nhất
 const lastAt = e => { const h = history(e.id); return h.length ? Math.max(...h.map(x => x.at)) : 0; };
-const pickFull = () => [1, 2, 3, 4, 5, 6, 7].map(p => { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) return null;
+const pickOld = () => [1, 2, 3, 4, 5, 6, 7].map(p => { const es = X.EXAMS.filter(e => e.part === p); if (!es.length) return null;
   const fresh = es.find(e => !history(e.id).length); return { e: fresh || es.slice().sort((a, b) => lastAt(a) - lastAt(b))[0], seen: !fresh }; }).filter(Boolean);
+// bài 200 câu = bài chuẩn cố định (đủ nhãn để làm báo cáo). Không có dữ liệu bài chuẩn thì dùng cách cũ: ghép đề lẻ chưa làm
+const pickFull = () => X.PT.length === 7 ? X.PT.map(e => ({ e, seen: false })) : pickOld();
+const isPT = run => !!(run && run.ids && run.ids.length === 7 && run.ids.every(id => (exById(id) || {}).hidden));
+X.ptItems = () => X.PT.flatMap(e => X.examItems(e));
+X.convScore = (raw, k) => conv(raw, TBL[k]);   // raw = số câu đúng / 100 của phần Nghe (L) hoặc Đọc (R)
 const FULL = run => run && run.ids ? run.ids.map(exById).filter(Boolean) : pickFull().map(x => x.e);
 X.route(/^\/fulltest$/, view => {
   const s = S(), run = s.fullRun && s.fullRun.i < 7 && !s.fullRun.saved ? s.fullRun : null;
   const plan = run ? FULL(run).map(e => ({ e, seen: false })) : pickFull(), es = plan.map(x => x.e);
   const total = es.reduce((a, e) => a + X.examItems(e).length, 0);
-  const hist = s.tests.full || [], anySeen = plan.some(x => x.seen);
+  const hist = s.tests.full || [], anySeen = plan.some(x => x.seen), pt = X.PT.length === 7, P = s.profile, done = (s.placement || []).length;
+  const iso = d => new Date(d - new Date(d).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const defDate = P.examDate || iso(Date.now() + 56 * 864e5);
+  const parts = [[1, 'Mô tả tranh', 6], [2, 'Hỏi đáp', 25], [3, 'Hội thoại', 39], [4, 'Bài nói', 30], [5, 'Điền câu', 30], [6, 'Điền đoạn văn', 16], [7, 'Đọc hiểu', 54]];
   view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi</a>
-    <div class="kicker" style="margin-top:14px">Bài thi đầu vào</div><h1 class="h1">Bài thi ${total} câu, như phòng thi thật</h1>
-    <p class="lead">Làm một lần đủ 7 Part để biết mình đang ở đâu: phần Nghe chạy liền Part 1 → 4 (khoảng 45 phút), phần Đọc Part 5 → 7 dùng chung đồng hồ 75 phút. Xong bài có điểm từng Part, ước tính điểm TOEIC và gợi ý nên học Part nào trước.</p>
-    <div class="grid g2 sec"><div class="card"><div class="h3" style="margin-bottom:8px">Chuẩn bị</div><ul class="small ex-ul">
-      <li>Dành trọn khoảng 2 tiếng, ngồi chỗ yên tĩnh, đeo tai nghe.</li><li>Phần nghe không dừng lại, không nghe lại. Giữa các Part có màn hình chờ, bấm là sang Part sau.</li>
-      <li>Phần đọc: hết 75 phút là tự nộp. Gợi ý chia giờ: Part 5 ~11 phút, Part 6 ~9 phút, Part 7 ~55 phút.</li><li>Thoát giữa chừng vẫn lưu, lần sau vào đây làm tiếp đúng Part đang dở.</li></ul></div>
-      <div class="card"><div class="h3" style="margin-bottom:4px">Bài này gồm</div><div class="small muted" style="margin-bottom:8px">Mỗi Part tự chọn đề bạn chưa làm, để không gặp lại câu cũ.</div>${plan.map(({ e, seen }, i) => `<div class="row small" style="margin:4px 0"><span class="pill ${run && run.i > i ? 'sage' : run && run.i === i ? 'gold' : ''}">Part ${e.part}</span><span class="muted">${esc(e.n)} - ${X.examItems(e).length} câu</span>${seen ? '<span class="pill ember" title="Bạn đã làm hết các đề của Part này">đã gặp</span>' : ''}${run && run.res[i] ? `<span class="grow"></span><b>${run.res[i].correct}/${run.res[i].total}</b>` : ''}</div>`).join('')}
-      ${anySeen ? '<div class="small" style="margin-top:8px;color:var(--ember)">Part có nhãn “đã gặp”: bạn đã làm hết đề của Part đó, bài này lấy lại đề làm lâu nhất nên điểm Part đó có thể cao hơn thực lực.</div>' : ''}
+    <div class="kicker" style="margin-top:14px">Bài thi đầu vào</div><h1 class="h1">Bài chuẩn ${total} câu: đo đúng mình đang ở đâu</h1>
+    <p class="lead">Làm một lần đủ 7 Part như phòng thi thật. Xong bài, Tooez phân tích tới từng câu: Part nào mạnh, dạng câu nào yếu, lỗi nào lặp lại nhiều nhất, còn cách mục tiêu bao xa, rồi lên lộ trình theo tuần tới ngày thi của bạn.</p>
+    ${done && !run ? `<div class="card tint sec small">Bạn đã làm bài chuẩn ${done} lần. <a href="#/report"><b>Xem báo cáo gần nhất ${icon('arrow')}</b></a> Làm lại sẽ gặp câu cũ nên điểm thường cao hơn thực lực. Muốn đo tiến bộ, hãy dùng các đề từng Part (Đề 2).</div>` : ''}
+    ${pt && !run ? `<div class="card sec pt-intake"><div class="h3" style="margin-bottom:4px">1. Mục tiêu của bạn</div><div class="small muted" style="margin-bottom:12px">Dùng để tính khoảng cách cần lấp và chia lộ trình theo tuần. Đổi được sau trong báo cáo.</div>
+      <div class="pt-form"><label><span class="small">Điểm mục tiêu</span><select id="pt-aim">${[450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950].map(v => `<option ${v === (P.aim || 700) ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+        <label><span class="small">Ngày thi dự kiến</span><input type="date" id="pt-date" value="${esc(defDate)}" min="${iso(Date.now() + 864e5)}"></label>
+        <label><span class="small">Thời gian tự học mỗi ngày</span><select id="pt-min">${[[30, '30 phút'], [60, '1 tiếng'], [90, '1 tiếng 30'], [120, '2 tiếng'], [180, '3 tiếng']].map(([v, n]) => `<option value="${v}" ${v === (P.studyMin || 60) ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div></div>` : ''}
+    <div class="grid g2 sec"><div class="card"><div class="h3" style="margin-bottom:8px">${pt && !run ? '2. ' : ''}Chuẩn bị</div><ul class="small ex-ul">
+      <li>Dành trọn khoảng 2 tiếng, ngồi chỗ yên tĩnh, đeo tai nghe.</li><li>Phần Nghe (Part 1-4, khoảng 45 phút) chạy liền, không dừng, không nghe lại. Giữa các Part có màn hình chờ.</li>
+      <li>Phần Đọc (Part 5-7) dùng chung đồng hồ 75 phút, hết giờ tự nộp. Gợi ý: Part 5 ~11 phút, Part 6 ~9 phút, Part 7 ~55 phút.</li>
+      <li><b>Mỗi câu bấm thêm Chắc / Phân vân / Lụi.</b> Báo cáo dùng phần này để tách lỗi "tưởng đúng mà sai" với lỗi đoán.</li><li>Thoát giữa chừng vẫn lưu, lần sau vào đây làm tiếp đúng Part đang dở.</li></ul></div>
+      <div class="card"><div class="h3" style="margin-bottom:4px">Bài này gồm</div><div class="small muted" style="margin-bottom:8px">${pt ? 'Đúng số câu, thứ tự và tỉ lệ dạng câu của đề thật.' : 'Mỗi Part tự chọn đề bạn chưa làm.'}</div>${plan.map(({ e, seen }, i) => { const pp = parts.find(x => x[0] === e.part) || [];
+        return `<div class="row small" style="margin:4px 0"><span class="pill ${run && run.i > i ? 'sage' : run && run.i === i ? 'gold' : ''}">Part ${e.part}</span><span class="muted">${esc(pp[1] || e.n)} - ${X.examItems(e).length} câu</span>${seen ? '<span class="pill ember">đã gặp</span>' : ''}${run && run.res[i] ? `<span class="grow"></span><b>${run.res[i].correct}/${run.res[i].total}</b>` : ''}</div>`; }).join('')}
+      ${anySeen ? '<div class="small" style="margin-top:8px;color:var(--ember)">Part có nhãn “đã gặp”: điểm Part đó có thể cao hơn thực lực.</div>' : ''}
       ${hist.length ? `<div class="small faint" style="margin-top:8px">Đã làm ${hist.length} lần - gần nhất ${hist[hist.length - 1].correct}/${hist[hist.length - 1].total} câu${hist[hist.length - 1].est ? `, ước tính ~${hist[hist.length - 1].est}` : ''}</div>` : ''}</div></div>
     <div class="row sec">${run && run.i > 0 ? `<button class="btn pri lg" id="ft-cont">Làm tiếp Part ${es[run.i].part} ${icon('arrow')}</button><button class="btn lg" id="ft-go">Làm lại từ đầu</button>` : `<button class="btn pri lg" id="ft-go">Bắt đầu làm bài ${icon('arrow')}</button>`}</div></div>`;
   const start = fresh => {
-    if (fresh) { X.sessDel('/fulltest'); fullMem = {}; s.fullRun = { at: Date.now(), i: 0, res: [], left: 75 * 60, ids: pickFull().map(x => x.e.id) }; X.save(); }
+    if (fresh) {
+      const g = id => $(id, view), aim = g('#pt-aim'), date = g('#pt-date'), min = g('#pt-min');
+      if (aim) { P.aim = +aim.value; P.studyMin = +min.value; if (date.value) P.examDate = date.value; }
+      X.sessDel('/fulltest'); fullMem = {}; s.fullRun = { at: Date.now(), i: 0, res: [], pt: [], left: 75 * 60, ids: pickFull().map(x => x.e.id) }; X.save();
+    }
     step(view, fresh ? null : X.sessGet('/fulltest'));
   };
   $('#ft-go', view).onclick = () => { if (run && run.i > 0 && !confirm('Bỏ bài đang làm dở và làm lại từ đầu?')) return; start(true); };
@@ -352,6 +384,7 @@ function step(view, sv) {
   if (sv && sv.exam !== e.id) sv = null;
   runExam(view, e, items, sv, { left: LISTEN(e.part) ? null : run.left, onDone: (res, left) => {
     run.res[run.i] = { id: e.id, part: e.part, correct: res.correct, total: res.total, ms: res.ms };
+    (run.pt ||= [])[run.i] = { a: res.rows.map(r => r.chosen), c: res.rows.map(r => ({ sure: 's', unsure: 'u', guess: 'g' })[r.conf] || ''), t: res.rows.map(r => Math.round((r.ms || 0) / 100) / 10) };
     fullMem[run.i] = { items, res };
     if (!LISTEN(e.part)) run.left = Math.max(0, left);
     run.i++; run.at = Date.now(); X.save();
@@ -368,6 +401,14 @@ function step(view, sv) {
 const LV = pc => pc >= 80 ? ['Vững', 'sage', 'Giữ phong độ: mỗi 2-3 tuần làm lại một đề.'] : pc >= 60 ? ['Khá', 'gold', 'Đã nắm cách làm, cần luyện tốc độ và tránh bẫy trong Lab.'] : pc >= 40 ? ['Còn hổng', 'ember', 'Học lại các bài trong Lộ trình, chữa kỹ câu sai.'] : ['Yếu', 'red', 'Bắt đầu từ bài 1 "Cách nghĩ và phương pháp" của Part này.'];
 function fullResult(view) {
   const run = S().fullRun; if (!run) return X.go('#/fulltest');
+  if (isPT(run)) {
+    if (!run.saved) { const P = S().profile, flat = k => (run.pt || []).flatMap(x => (x && x[k]) || []);
+      const raw = ps => run.res.filter(r => ps.includes(r.part)).reduce((x, r) => x + r.correct, 0), L = conv(raw([1, 2, 3, 4]), TBL.L), R = conv(raw([5, 6, 7]), TBL.R);
+      (S().placement ||= []).push({ at: Date.now(), v: 1, aim: P.aim || 700, date: P.examDate || '', min: P.studyMin || 60, a: flat('a'), c: flat('c'), t: flat('t'), L, R });
+      (S().tests.full ||= []).push({ at: Date.now(), correct: raw([1, 2, 3, 4, 5, 6, 7]), total: 200, score: pct(raw([1, 2, 3, 4, 5, 6, 7]), 200), est: L + R, pt: 1, parts: run.res.map(r => [r.part, r.correct, r.total]) });
+      P.target = String(P.aim || 700); P.current = String(L + R); run.saved = 1; X.save(); }
+    return X.go('#/report');
+  }
   const es = FULL(run);
   const L = run.res.filter(r => r.part <= 4), R = run.res.filter(r => r.part >= 5), sum = a => a.reduce((x, r) => x + r.correct, 0), tot = a => a.reduce((x, r) => x + r.total, 0);
   const cl = (c, t) => conv(Math.round(100 * c / Math.max(1, t)), TBL.L), cr = (c, t) => conv(Math.round(100 * c / Math.max(1, t)), TBL.R);

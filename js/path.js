@@ -6,7 +6,7 @@ const S = () => X.S();
 const P = window.PATH || {};
 const ST = [
   { k: 'learn', n: 'Học', d: 'Thẻ kiến thức: khái niệm, ví dụ, thử ngay', ic: 'read', min: 3 },
-  { k: 'vocab', n: 'Từ vựng', d: 'Game 6 vòng: khám phá → ghép → nghe → phản xạ → vận dụng → nhớ lại', ic: 'words', min: 6 },
+  { k: 'vocab', n: 'Từ vựng', d: 'Game 7 vòng: khám phá → ghép → nghe → phản xạ → vận dụng → nhớ lại → nói / viết ra', ic: 'words', min: 6 },
   { k: 'drill', n: 'Luyện', d: '10 câu đúng dạng, có giải thích từng câu', ic: 'bolt', min: 5 },
   { k: 'check', n: 'Kiểm tra', d: 'Không xem đáp án giữa chừng. Đạt 80% để mở bài sau', ic: 'target', min: 4 },
 ];

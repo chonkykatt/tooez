@@ -86,6 +86,7 @@ const ROUNDS = [
   { k: 'react', n: 'Phản xạ', d: '4 giây mỗi từ, giữ combo', ab: 'Phản xạ' },
   { k: 'apply', n: 'Vận dụng', d: 'Điền vào câu, cụm, cách nói khác', ab: 'Vận dụng' },
   { k: 'recall', n: 'Nhớ lại', d: 'Nhìn nghĩa, tự gõ lại từ', ab: 'Nhớ chủ động' },
+  { k: 'produce', n: 'Nói / viết ra', d: 'Tự nói ra từ, tự đặt câu của mình', ab: 'Tự tạo ra' },
 ];
 
 X.vocabGame = (view, words, o = {}) => {
@@ -94,23 +95,23 @@ X.vocabGame = (view, words, o = {}) => {
   if (sv && sv.kind === 'vg') { const ws = sv.ids.map(id => X.wordById[id]); if (ws.every(Boolean)) words = ws; }
   if (!words.length) { view.innerHTML = `<div class="page"><div class="empty">Không có từ cho trạm này.</div></div>`; return; }
   const st = { r: 0, combo: 0, best: 0, xp: 0, score: Object.fromEntries(ROUNDS.map(r => [r.k, [0, 0]])), wrong: {}, t0: Date.now() };
-  if (sv && sv.kind === 'vg' && words.length === sv.ids.length) Object.assign(st, { r: sv.r, xp: sv.xp || 0, score: sv.score || st.score, wrong: sv.wrong || {} });
-  const persist = () => X.sessSet(sKey, { kind: 'vg', title: (o.title || 'Từ vựng') + ' - vòng ' + (st.r + 1) + '/6', n: 0, i: 0, ids: words.map(w => w.id), r: st.r, xp: st.xp, score: st.score, wrong: st.wrong });
+  if (sv && sv.kind === 'vg' && words.length === sv.ids.length) Object.assign(st, { r: Math.min(sv.r, ROUNDS.length - 1), xp: sv.xp || 0, score: Object.assign(st.score, sv.score || {}), wrong: sv.wrong || {} });
+  const persist = () => X.sessSet(sKey, { kind: 'vg', title: (o.title || 'Từ vựng') + ' - vòng ' + (st.r + 1) + '/' + ROUNDS.length, n: 0, i: 0, ids: words.map(w => w.id), r: st.r, xp: st.xp, score: st.score, wrong: st.wrong });
   const distract = (w, n, field) => { const pool = X.VOCAB.filter(x => x.id !== w.id && x[field] && x[field] !== w[field] && x.kind === w.kind); const near = pool.filter(x => x.parts.some(p => w.parts.includes(p)) && x.topic === w.topic); return sample(near.length >= n ? near : pool, n); };
   const mark = (rk, ok, w) => { X.logAttempt({ id: 'v:' + w.id, part: w.parts[0], skill: 'Từ vựng' }, ok, 0, '', 'vgame:' + rk); st.score[rk][1]++; X.react && setTimeout(() => X.react(ok, null, ok ? st.combo + 1 : 0), 10); if (ok) { st.score[rk][0]++; st.combo++; st.best = Math.max(st.best, st.combo); const g = 1 + (st.combo % 5 === 0 ? 2 : 0); st.xp += g; X.addXP(g); } else { st.combo = 0; st.wrong[w.id] = (st.wrong[w.id] || 0) + 1; } hud(); };
   const hud = () => { const h = $('#vg-hud', view); if (h) h.innerHTML = `<span class="combo ${st.combo >= 3 ? 'hot' : ''}">${icon('bolt')} combo ×${st.combo}</span><span class="mono small">+${st.xp} XP</span>`; };
   const shell = (body, sub) => {
     view.innerHTML = `<div class="page"><div class="qz" style="max-width:820px">
-      <div class="qz-top"><a class="icon-btn" href="${o.back || '#/vocab'}">${icon('x')}</a><div><div class="kicker">${esc(o.title || 'Từ vựng')}</div><div class="h3">Vòng ${st.r + 1}/6 - ${ROUNDS[st.r].n}</div></div>
+      <div class="qz-top"><a class="icon-btn" href="${o.back || '#/vocab'}">${icon('x')}</a><div><div class="kicker">${esc(o.title || 'Từ vựng')}</div><div class="h3">Vòng ${st.r + 1}/${ROUNDS.length} - ${ROUNDS[st.r].n}</div></div>
         <div class="rounds">${ROUNDS.map((r, i) => `<i class="${i < st.r ? 'on' : i === st.r ? 'cur' : ''}" title="${r.n}"></i>`).join('')}</div><span id="vg-hud" class="row" style="gap:10px"></span></div>
       ${sub ? `<div class="small muted" style="margin:-8px 0 14px">${sub}</div>` : ''}<div id="vg-b">${body}</div></div></div>`;
     hud(); return $('#vg-b', view);
   };
   const nextRound = () => { TTS.stop(); st.r++; if (st.r >= ROUNDS.length) return finish(); runRound(); };
   const intro = () => {
-    shell(`<div class="card vg-intro">${X.xiSay('wow', `${words.length} từ mới, 6 vòng chơi. Đúng liên tiếp 5 câu là có combo đó!`, 76)}<div class="kicker syn" style="margin-top:6px">${words.length} từ trong lượt này</div><div class="netw" style="margin:12px 0 18px">${words.map(w => `<span data-chip="${w.id}">${esc(w.w)}</span>`).join('')}</div>
+    shell(`<div class="card vg-intro">${X.xiSay('wow', `${words.length} từ mới, 7 vòng chơi. Đúng liên tiếp 5 câu là có combo đó!`, 76)}<div class="kicker syn" style="margin-top:6px">${words.length} từ trong lượt này</div><div class="netw" style="margin:12px 0 18px">${words.map(w => `<span data-chip="${w.id}">${esc(w.w)}</span>`).join('')}</div>
       <div class="vg-steps">${ROUNDS.map((r, i) => `<div><b>${i + 1}. ${r.n}</b><span class="small muted">${r.d}</span></div>`).join('')}</div>
-      <p class="small muted" style="margin-top:14px">Đúng liên tiếp để giữ combo. Cứ 5 câu đúng liền nhau được thêm XP. Hết 6 vòng, các từ tự vào lịch ôn.</p>
+      <p class="small muted" style="margin-top:14px">Đúng liên tiếp để giữ combo. Cứ 5 câu đúng liền nhau được thêm XP. Hết ${ROUNDS.length} vòng, các từ tự vào lịch ôn.</p>
       <button class="btn pri lg" id="vg-go" style="margin-top:8px">Bắt đầu ${icon('arrow')}</button></div>`);
     st.r = 0; X.imgPrefetch && X.imgPrefetch(words).then(() => words.forEach(w => { const u = X.imgNow(w), el = $(`[data-chip="${w.id}"]`, view); if (u && el && !el.querySelector('img')) el.insertAdjacentHTML('afterbegin', `<img class="chip-img" src="${u}" alt="">`); })); $('#vg-go', view).onclick = runRound; document.onkeydown = e => { if (e.key === 'Enter') runRound(); };
   };
@@ -149,6 +150,16 @@ X.vocabGame = (view, words, o = {}) => {
     if (R === 'react') return mcqSeq('react', shuffle(words).map(w => { const im = X.imgNow && X.imgNow(w); if (im) { const ds = distract(w, 3, 'w'); const op = shuffle([w, ...ds]); return { w, html: `<div class="kicker">Nhìn ảnh, chọn từ</div><div class="wimg on" style="margin-top:10px"><img src="${im}" alt=""></div>`, opts: op.map(x => x.w), a: op.indexOf(w) }; } const op = shuffle([w.vi, ...X.smartOpts(w, 3, 'mean')]); return { w, html: `<div class="hw">${esc(w.w)}</div>`, opts: op, a: op.indexOf(w.vi) }; }), nextRound, { time: 5, auto: true });
     if (R === 'apply') return mcqSeq('apply', shuffle(words).map(applyQ), nextRound);
     if (R === 'recall') return recall();
+    if (R === 'produce') return produce();
+  }
+
+  // vòng 7: tự tạo ra (output) - nói từ ra miệng, tự đặt câu; chấm ở js/output.js
+  function produce() {
+    if (!X.outRun) return nextRound();
+    const list = shuffle(words).slice(0, X.canSpeak ? Math.min(4, words.length) : Math.min(2, words.length));
+    const tasks = list.map((w, i) => (X.canSpeak && i < list.length - 1) ? { t: 'sayw', w } : { t: 'own', w });
+    const b = shell('<div class="card vcard" id="vg-out" style="text-align:left"></div>');
+    X.outRun($('#vg-out', b), tasks, { head: 1, done: r => { st.score.produce = [r.ok, r.n]; nextRound(); } });
   }
 
   function discover() {
@@ -256,14 +267,14 @@ X.vocabGame = (view, words, o = {}) => {
     const weak = words.filter(w => st.wrong[w.id] >= 2);
     if (acc >= 70) { X.sfx.win(); X.rain(70); }
     view.innerHTML = `<div class="page"><div class="qz" style="max-width:820px"><div class="kicker">${esc(o.title || 'Từ vựng')} - Kết quả</div><div class="hello">${X.xi(acc >= 80 ? 'happy' : acc >= 50 ? 'think' : 'sad', 96)}<h1 class="h1">${acc}% chính xác, combo cao nhất ×${st.best}</h1></div>
-      <div class="card sec"><div class="h3" style="margin-bottom:10px">Không phải một điểm số. Sáu năng lực.</div>
+      <div class="card sec"><div class="h3" style="margin-bottom:10px">Không phải một điểm số. Bảy năng lực.</div>
         ${ROUNDS.map(r => { const [ok, n] = st.score[r.k]; return `<div class="hbar"><span>${r.ab}</span><div class="bar sage"><i style="width:${pct(ok, n)}%"></i></div><span class="mono small">${n ? pct(ok, n) : '—'}</span></div>`; }).join('')}</div>
       <div class="card sec"><div class="h3" style="margin-bottom:10px">${words.length} từ đã vào lịch ôn</div><div class="netw">${words.map(w => `<a href="#/vocab/w/${w.id}"><span style="${st.wrong[w.id] >= 2 ? 'border-color:var(--ember);color:var(--ember)' : ''}">${esc(w.w)}</span></a>`).join('')}</div>
         ${weak.length ? `<p class="small muted" style="margin-top:10px">Từ viền cam sai từ 2 lần, sẽ quay lại sớm hơn. Bấm vào từ để học sâu.</p>` : ''}</div>
       <div class="row sec">${o.next ? `<a class="btn pri" href="${o.next.href}">${esc(o.next.label)} ${icon('arrow')}</a>` : ''}<button class="btn" id="vg-again">Lượt từ mới</button><a class="btn ghost" href="${o.back || '#/vocab'}">Xong</a></div></div></div>`;
     $('#vg-again', view).onclick = () => X.render();
   }
-  if (sv && sv.kind === 'vg' && st.r > 0) { setTimeout(() => X.toast(`Làm tiếp từ vòng ${st.r + 1}/6`), 50); runRound(); } else intro();
+  if (sv && sv.kind === 'vg' && st.r > 0) { setTimeout(() => X.toast(`Làm tiếp từ vòng ${st.r + 1}/${ROUNDS.length}`), 50); runRound(); } else intro();
 };
 
 /* ---------------- deep journey for ANY word ---------------- */

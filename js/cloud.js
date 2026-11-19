@@ -30,7 +30,7 @@ const ungz = async t => {
 const head = async () => { const { data, error } = await sb.from('progress').select('stamp').eq('user_id', user.id).maybeSingle(); if (error) throw error; return data; };
 const pull = async () => { const { data, error } = await sb.from('progress').select('blob,stamp').eq('user_id', user.id).maybeSingle(); if (error) throw error; return data; };
 const decode = async r => JSON.parse(await ungz(r.blob));
-const blank = S => !S.profile.name && (S.attempts || []).length < 5 && !Object.keys(S.words || {}).length;
+const blank = S => !S.profile.name && (S.attempts || []).length < 5 && !Object.keys(S.words || {}).length && !(S.placement || []).length;   // đã làm bài chuẩn thì không bao giờ bị ghi đè khi đăng nhập
 const fillProfile = rp => { if (!rp) return; const p = X.S().profile; Object.keys(rp).forEach(k => { if ((p[k] === '' || p[k] == null) && rp[k] !== '' && rp[k] != null) p[k] = rp[k]; }); };
 const refresh = () => { X.renderSide && X.renderSide(); X.onSync && X.onSync(); paintCards(); };
 const setSt = (state, msg) => { st.state = state; st.msg = msg || ''; if (state === 'ok') st.at = Date.now(); paintCards(); X.renderSide && X.renderSide(); };

@@ -244,6 +244,7 @@ X.route(/^\/lab$/, view => {
   const labs = Object.values(X.LABS).filter(l => !LAB_HIDE.has(l.id) && (l.kind === 'pic' || sizeOf(l) > 0));
   view.innerHTML = `<div class="page">${X.stepHead('luyen')}<div class="kicker">Lab phản xạ</div><h1 class="h1">Luyện cho đến khi không cần dịch</h1>
     <p class="lead">Bài ngắn, nhiều lượt. Mỗi module có hai chế độ: <b>Chính xác</b> (không giới hạn giờ, có giải thích) để hiểu, rồi <b>Tốc độ</b> (đếm ngược từng câu) để thành phản xạ. Nhanh mà sai thì chưa tính là giỏi.</p>
+    <a class="card link ot-banner sec" href="#/output"><div class="ot-ic">🎤</div><div><div class="kicker syn">Mới · Nói và viết ra</div><div class="h3" style="font-family:var(--f-display);font-size:17px">Tự nói, tự viết thì mới nhớ lâu</div><div class="small muted">Nhìn nghĩa nói ra từ, dịch ngược Việt → Anh, viết lại như đề, tự đặt câu.</div></div></a>
     ${GROUPS.map(([g, gn]) => { const ls = labs.filter(l => String(l.part) === g); if (!ls.length) return '';
       return `<div class="sec"><div class="sec-h"><h2 class="h2">${gn}</h2></div><div class="grid g-auto">${ls.map(l => { const r = s.labs[l.id];
         return `<a class="card link lab-card" href="#/lab/${l.id}"><div class="row"><span class="pill syn">${KIND_TAG[l.kind] || ''}</span><span class="pill">${sizeOf(l)} câu</span></div>

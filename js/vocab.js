@@ -19,7 +19,7 @@ X.route(/^\/vocab$/, view => {
     <div class="grid g3 sec">
       <div class="card"><div class="stat"><div class="v">${due}</div><div class="l">từ đến hạn ôn</div></div><a class="btn ${due ? 'pri' : ''} sm" style="margin-top:12px" href="#/vocab/review">${icon('refresh')} Ôn ngay</a></div>
       <div class="card"><div class="stat"><div class="v">${learned}</div><div class="l">từ đã học - ${Object.values(s.words).filter(w => w.lvl >= 3).length} nhớ chủ động</div></div><a class="btn ${due ? '' : 'pri'} sm" style="margin-top:12px" href="#/vocab/learn">${icon('plus')} Học ${s.profile.newWords} từ mới</a></div>
-      <a class="card link ink" id="vc-reel" href="#/vocab/nho"><div class="kicker" style="color:var(--sun)">Mới · Nhớ 1 phát</div><div class="h2" style="margin:6px 0">Học từ như xem video 1 phút</div><div class="small muted" style="color:#D9D4FF">10 bước tự chạy, có giọng đọc: đoán từ, phát âm Anh - Mỹ, nghĩa, ví dụ, dạng từ, cụm từ, phân biệt, tình huống thật, nhớ lại.</div></a>
+      <a class="card link ink" id="vc-reel" href="#/vocab/nho"><div class="kicker" style="color:var(--sun)">Mới · Nhớ 1 phát</div><div class="h2" style="margin:6px 0">Học từ như xem video 1 phút</div><div class="small muted" style="color:#D9D4FF">10 bước tự chạy, có giọng đọc: đoán từ, phát âm Anh - Mỹ, nghĩa, ví dụ, dạng từ, cụm từ, phân biệt, tình huống thật, nhớ lại.</div></a><a class="card link" id="vc-doc" href="#/doc"><div class="kicker syn">Mới · Đọc trước, học sau</div><div class="h2" style="margin:6px 0">Học từ ngay trong bài đọc Part 7</div><div class="small muted">Đọc bài thật, bấm từ chưa biết, học đến khi nhớ hẳn, rồi tự dịch và trả lời câu hỏi.</div></a>
     </div>
     <div class="sec-h sec"><h2 class="h2">Học theo nhóm nghĩa</h2><span class="small muted">Mỗi nhóm 4-25 từ cùng chủ đề, học như một game 6 vòng</span></div>
     <div class="seg" id="vgp">${X.PARTS.map(p => `<button data-v="${p.k}">${p.n}</button>`).join('')}</div>
@@ -83,6 +83,7 @@ X.route(/^\/vocab\/w\/([\w-]+)$/, (view, id) => {
         ${w.col.length ? `<div class="kicker" style="margin:14px 0 8px">Cụm hay đi cùng</div><div class="netw">${w.col.map((c, i) => `<span title="${esc(w.colVi ? w.colVi[i] : '')}">${esc(c)}${w.colVi && w.colVi[i] ? ` <small class="faint">- ${esc(w.colVi[i])}</small>` : ''}</span>`).join('')}</div>` : ''}
         ${w.fam && w.fam.length ? `<div class="kicker" style="margin:14px 0 8px">Họ từ</div><table class="dt">${w.fam.map(f => `<tr><td><b>${esc(f.f)}</b></td><td><span class="pill">${esc(f.pos)}</span></td><td class="muted">${esc(f.vi || '')}</td></tr>`).join('')}</table>` : ''}
         ${w.syn && w.syn.length ? `<div class="kicker" style="margin:14px 0 8px">Đồng nghĩa</div><div class="netw">${w.syn.map(c => `<span>${esc(c)}</span>`).join('')}</div>` : ''}
+        ${X.outTask ? `<div class="kicker" style="margin:14px 0 6px">Tự tạo ra để nhớ lâu</div><div class="row" style="gap:8px;flex-wrap:wrap">${X.canSpeak ? '<button class="btn sm" id="w-o-say">🎤 Nói ra từ này</button>' : ''}<button class="btn sm" id="w-o-own">📝 Tự đặt câu</button></div><div id="w-out" class="w-out"></div>${(X.mySentsOf(w.id) || []).map(x => `<div class="small ot-mine">“${esc(x.s)}”</div>`).join('')}` : ''}
         ${w.topics.length ? `<div class="kicker" style="margin:14px 0 6px">Chủ đề</div><div class="small muted">${w.topics.map(esc).join(' - ')}</div>` : ''}</div>
       <div class="card"><div class="kicker" style="margin-bottom:8px">Mức độ của bạn</div>
         ${r ? `<div class="row">${mdots(r.lvl)}<b>${X.LEVELS[r.lvl]}</b></div><div class="small muted" style="margin-top:6px">Đã ôn ${r.reps} lần - sai ${r.lapses} lần - ôn lại ${r.due <= Date.now() ? 'hôm nay' : 'ngày ' + fmtDate(r.due)}</div>` : '<div class="muted">Chưa học từ này.</div>'}
@@ -93,6 +94,10 @@ X.route(/^\/vocab\/w\/([\w-]+)$/, (view, id) => {
     ${rel.length ? `<div class="sec"><div class="kicker" style="margin-bottom:10px">Cùng chủ đề</div><div class="netw">${rel.map(x => `<a href="#/vocab/w/${x.id}"><span>${esc(x.w)}</span></a>`).join('')}</div></div>` : ''}</div>`;
   bindSay(view); X.imgFill && X.imgFill(view);
   $('#w-learn', view).onclick = () => session(view, [w], r ? 'review' : 'learn');
+  // tự tạo ra: nói ra từ, tự đặt câu (js/output.js)
+  const wo = $('#w-out', view), runO = t => X.outTask(wo, t, res => { wo.innerHTML = `<div class="small">${res.ok ? '✓ Tốt lắm!' : 'Lần sau sẽ quen hơn.'} <a href="#/output">Luyện thêm ở Nói và viết ra</a></div>`; });
+  if ($('#w-o-say', view)) $('#w-o-say', view).onclick = () => runO({ t: 'sayw', w });
+  if ($('#w-o-own', view)) $('#w-o-own', view).onclick = () => runO({ t: 'own', w });
 });
 
 /* ---------------- exercises ---------------- */

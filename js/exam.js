@@ -50,7 +50,7 @@ const estMin = (e, its) => Math.max(1, Math.round(its.length * (e.part === 1 ? 3
 
 /* ---------------- giới thiệu một đề ---------------- */
 X.route(/^\/exam\/([\w-]+)$/, (view, id) => {
-  const e = exById(id); if (!e) return X.go('#/tests');
+  const e = exById(id); if (!e || e.hidden) return X.go(e ? '#/fulltest' : '#/tests');   // bài chuẩn chỉ làm trọn trong /fulltest
   const items = X.examItems(e), g = G(e.part), sv = svFits(X.sessGet('/exam/' + id), items), h = history(id);
   view.innerHTML = `<div class="page"><a href="#/tests" class="small">${icon('back')} Đề thi</a>
     <div class="kicker" style="margin-top:14px">Part ${e.part} - ${LISTEN(e.part) ? 'Nghe' : 'Đọc'}</div><h1 class="h1">${esc(X.examTitle(id))}</h1>
@@ -277,8 +277,8 @@ function review(view, e, items, res, onBack) {
 /* chữa từng câu của bài chuẩn từ bản ghi gọn trong S().placement (báo cáo gọi tới) */
 X.ptReview = (view, part, rec, onBack) => {
   const e = X.PT.find(x => x.part === part); if (!e) return;
-  const all = X.ptItems(), items = X.examItems(e), off = all.indexOf(items[0]);
-  const rows = items.map((it, k) => { const ch = rec.a[off + k]; return { item: { ...it, num: e.start + k }, chosen: ch == null ? null : ch, ok: ch === it.answer, ms: (rec.t[off + k] || 0) * 1000, conf: ({ s: 'sure', u: 'unsure', g: 'guess' })[rec.c[off + k]] || null }; });
+  const all = X.examItems(e), off = rec.ids ? 0 : X.ptItems().indexOf(all[0]), pr = X.ptRows(rec, all).map(x => ({ it: x.it, k: rec.ids ? x.k : off + x.k })), items = pr.map(x => x.it);
+  const rows = pr.map(({ it, k }) => { const ch = rec.a[k]; return { item: { ...it, num: it.num || e.start + all.indexOf(it) }, chosen: ch == null ? null : ch, ok: ch === it.answer, ms: (rec.t[k] || 0) * 1000, conf: ({ s: 'sure', u: 'unsure', g: 'guess' })[rec.c[k]] || null }; });
   review(view, e, items, { rows, total: items.length, correct: rows.filter(r => r.ok).length }, onBack);
 };
 
@@ -337,6 +337,11 @@ const pickOld = () => [1, 2, 3, 4, 5, 6, 7].map(p => { const es = X.EXAMS.filter
 const pickFull = () => X.PT.length === 7 ? X.PT.map(e => ({ e, seen: false })) : pickOld();
 const isPT = run => !!(run && run.ids && run.ids.length === 7 && run.ids.every(id => (exById(id) || {}).hidden));
 X.ptItems = () => X.PT.flatMap(e => X.examItems(e));
+// ghép câu hiện có với chỗ của nó trong bản ghi (k): bản ghi có ids thì so theo id, nên admin thêm / ẩn câu sau đó cũng không lệch.
+// Câu thêm sau khi làm bài (không có trong bản ghi) bị bỏ qua. Bản ghi cũ không có ids thì so theo thứ tự như trước.
+X.ptRows = (rec, items) => { items = items || X.ptItems();
+  if (!rec.ids || !rec.ids.length) return items.map((it, k) => ({ it, k }));
+  const pos = new Map(rec.ids.map((id, k) => [id, k])); return items.filter(it => pos.has(it.id)).map(it => ({ it, k: pos.get(it.id) })); };
 X.convScore = (raw, k) => conv(raw, TBL[k]);   // raw = số câu đúng / 100 của phần Nghe (L) hoặc Đọc (R)
 const FULL = run => run && run.ids ? run.ids.map(exById).filter(Boolean) : pickFull().map(x => x.e);
 X.route(/^\/fulltest$/, view => {
@@ -384,7 +389,7 @@ function step(view, sv) {
   if (sv && sv.exam !== e.id) sv = null;
   runExam(view, e, items, sv, { left: LISTEN(e.part) ? null : run.left, onDone: (res, left) => {
     run.res[run.i] = { id: e.id, part: e.part, correct: res.correct, total: res.total, ms: res.ms };
-    (run.pt ||= [])[run.i] = { a: res.rows.map(r => r.chosen), c: res.rows.map(r => ({ sure: 's', unsure: 'u', guess: 'g' })[r.conf] || ''), t: res.rows.map(r => Math.round((r.ms || 0) / 100) / 10) };
+    (run.pt ||= [])[run.i] = { ids: items.map(it => it.id), a: res.rows.map(r => r.chosen), c: res.rows.map(r => ({ sure: 's', unsure: 'u', guess: 'g' })[r.conf] || ''), t: res.rows.map(r => Math.round((r.ms || 0) / 100) / 10) };
     fullMem[run.i] = { items, res };
     if (!LISTEN(e.part)) run.left = Math.max(0, left);
     run.i++; run.at = Date.now(); X.save();
@@ -404,7 +409,7 @@ function fullResult(view) {
   if (isPT(run)) {
     if (!run.saved) { const P = S().profile, flat = k => (run.pt || []).flatMap(x => (x && x[k]) || []);
       const raw = ps => run.res.filter(r => ps.includes(r.part)).reduce((x, r) => x + r.correct, 0), L = conv(raw([1, 2, 3, 4]), TBL.L), R = conv(raw([5, 6, 7]), TBL.R);
-      (S().placement ||= []).push({ at: Date.now(), v: 1, aim: P.aim || 700, date: P.examDate || '', min: P.studyMin || 60, a: flat('a'), c: flat('c'), t: flat('t'), L, R });
+      (S().placement ||= []).push({ at: Date.now(), v: 1, aim: P.aim || 700, date: P.examDate || '', min: P.studyMin || 60, ...(flat('ids').length === flat('a').length ? { ids: flat('ids') } : {}), a: flat('a'),   /* bài làm dở từ bản cũ thì thiếu id câu ở các Part đầu: không lưu ids */ c: flat('c'), t: flat('t'), L, R });
       (S().tests.full ||= []).push({ at: Date.now(), correct: raw([1, 2, 3, 4, 5, 6, 7]), total: 200, score: pct(raw([1, 2, 3, 4, 5, 6, 7]), 200), est: L + R, pt: 1, parts: run.res.map(r => [r.part, r.correct, r.total]) });
       P.target = String(P.aim || 700); P.current = String(L + R); run.saved = 1; X.save(); }
     return X.go('#/report');

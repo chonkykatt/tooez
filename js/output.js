@@ -49,7 +49,11 @@ const markTarget = (target, hit, mask) => { let k = -1; return esc(target).split
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const UA = navigator.userAgent || '';
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
-const nativeGood = () => !!SR && !lsGet('tooez.srBroken') && !/OPR\/|Opera|Vivaldi|YaBrowser|coc_coc|CocCoc|SamsungBrowser|Firefox|FxiOS/i.test(UA) && !navigator.brave;
+// nhận giọng của trình duyệt hỏng: nhớ 7 ngày (không phải vĩnh viễn) để thử lại khi trình duyệt sửa / đổi máy chủ;
+// lỗi mạng chỉ tính trong tab này, vì thường là mạng chập chờn chứ không phải trình duyệt hỏng
+let srOffTab = false;
+const srBroken = () => { const v = +lsGet('tooez.srBroken') || 0; return srOffTab || (v > 1 && Date.now() - v < 7 * 864e5); };
+const nativeGood = () => !!SR && !srBroken() && !/OPR\/|Opera|Vivaldi|YaBrowser|coc_coc|CocCoc|SamsungBrowser|Firefox|FxiOS/i.test(UA) && !navigator.brave;
 const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && (window.AudioContext || window.webkitAudioContext));
 X.canSpeak = nativeGood() || canRecord;
 let rec = null, stopNow = null;
@@ -111,7 +115,10 @@ const listenWhisper = async ui => {
 const listen = async ui => {
   stopRec(); TTS.stop();
   if (nativeGood()) { try { return await listenNative(ui); }
-    catch (e) { if (!['broken', 'network', 'service-not-allowed', 'language-not-supported'].includes(e.message) || !canRecord) throw e; lsSet('tooez.srBroken', '1'); } }
+    catch (e) { const m = e.message;
+      if (!['broken', 'network', 'service-not-allowed', 'language-not-supported'].includes(m) || !canRecord) throw e;
+      if (m === 'network') { if (navigator.onLine === false) throw e; srOffTab = true; }   // mất mạng thật: báo lỗi mạng, không đổi cách nghe
+      else lsSet('tooez.srBroken', String(Date.now())); } }
   if (!canRecord) throw new Error('nosr');
   return listenWhisper(ui);
 };

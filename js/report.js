@@ -24,8 +24,8 @@ const has = h => !/#\/doc/.test(h) || !!window.DOCREAD;   // tính năng chưa c
 /* ================= tính số liệu ================= */
 function analyze(rec) {
   const items = X.ptItems();
-  if (items.length !== 200) return null;
-  const R = items.map((it, k) => { const ch = rec.a[k]; return { it, k, n: it.num, ch: ch == null ? null : ch, ok: ch === it.answer, c: rec.c[k] || '', t: rec.t[k] || 0, tr: ch != null && ch !== it.answer && it.trap ? it.trap[ch] || null : null }; });
+  if (!rec.ids && items.length !== 200) return null;   // bản ghi cũ (không có id câu) chỉ đọc được khi đề còn nguyên 200 câu
+  const R = X.ptRows(rec, items).map(({ it, k }) => { const ch = rec.a[k]; return { it, k, n: it.num, ch: ch == null ? null : ch, ok: ch === it.answer, c: rec.c[k] || '', t: rec.t[k] || 0, tr: ch != null && ch !== it.answer && it.trap ? it.trap[ch] || null : null }; });
   const by = f => R.filter(f), acc = rs => rs.length ? rs.filter(r => r.ok).length / rs.length : 0, wr = rs => rs.filter(r => !r.ok);
   const part = p => by(r => r.it.part === p);
   const parts = [1, 2, 3, 4, 5, 6, 7].map(p => { const rs = part(p); return { p, n: rs.length, ok: rs.filter(r => r.ok).length }; });
@@ -284,7 +284,7 @@ function render(view, idx) {
   const pk = $('#rp-pick', view); if (pk) pk.onchange = () => X.go('#/report/' + pk.value);
   $('#rp-print', view).onclick = () => { $$('details.rp-part', view).forEach(d => d.open = true); setTimeout(() => window.print(), 60); };
   $$('[data-rv]', view).forEach(b => b.onclick = () => X.ptReview(view, +b.dataset.rv, rec, () => render(view, i)));
-  $$('.rp-n[data-q]', view).forEach(b => b.onclick = () => { const n = +b.dataset.q, it = A.items[n - 1]; X.ptReview(view, it.part, rec, () => render(view, i)); setTimeout(() => { const sb = $(`#rv-sheet [data-j="${n - X.PT.find(e => e.part === it.part).start}"]`, view); if (sb) sb.click(); }, 30); });
+  $$('.rp-n[data-q]', view).forEach(b => b.onclick = () => { const n = +b.dataset.q, it = A.items.find(x => x.num === n); if (!it) return; const e = X.PT.find(x => x.part === it.part), j = X.ptRows(rec, X.examItems(e)).findIndex(x => x.it.num === n); X.ptReview(view, it.part, rec, () => render(view, i)); setTimeout(() => { const sb = $(`#rv-sheet [data-j="${j}"]`, view); if (sb) sb.click(); }, 30); });
   $('#rp-edit', view).onclick = ev => { ev.preventDefault(); const box = $('#rp-editbox', view); box.hidden = !box.hidden;
     box.innerHTML = `<label><span class="small">Điểm mục tiêu</span><select id="rp-aim">${[450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950].map(v => `<option ${v === rec.aim ? 'selected' : ''}>${v}</option>`).join('')}</select></label><label><span class="small">Ngày thi</span><input type="date" id="rp-date" value="${esc(rec.date || '')}"></label><label><span class="small">Tự học mỗi ngày</span><select id="rp-min">${[[30, '30 phút'], [60, '1 tiếng'], [90, '1 tiếng 30'], [120, '2 tiếng'], [180, '3 tiếng']].map(([v, n]) => `<option value="${v}" ${v === rec.min ? 'selected' : ''}>${n}</option>`).join('')}</select></label><button class="btn pri sm" id="rp-save">Cập nhật</button>`;
     $('#rp-save', view).onclick = () => { rec.aim = +$('#rp-aim', view).value; rec.date = $('#rp-date', view).value; rec.min = +$('#rp-min', view).value; Object.assign(S().profile, { aim: rec.aim, examDate: rec.date, studyMin: rec.min }); if (using) applyPlan(i, order); X.save(); render(view, i); }; };

@@ -49,7 +49,10 @@ const itemOf = (d, pi, seg) => {
 };
 
 /* ---------- trạng thái từng bài ---------- */
-const prog = id => { const st = S(); st.dr = st.dr || {}; return st.dr[id] || (st.dr[id] = { sel: {}, stage: 'read' }); };
+// at = mốc lần sửa cuối: khi đồng bộ giữa các máy, bản mới hơn thay cả bài (không trộn danh sách từ / vòng học cũ vào, không làm "Làm lại" bị hoàn tác)
+let curP = null;
+const prog = id => { const st = S(); st.dr = st.dr || {}; return (curP = st.dr[id] || (st.dr[id] = { sel: {}, stage: 'read', at: Date.now() })); };
+const drSave = () => { if (curP) curP.at = Date.now(); drSave(); };
 
 /* ---------- danh sách bài ---------- */
 X.route(/^\/doc$/, view => {
@@ -90,7 +93,7 @@ function readStage(view, d, P, SG, head) {
       <div class="dr-bar"><span><b id="dr-n">${n()}</b> từ đã chọn</span><button class="btn pri" id="dr-go" ${n() ? '' : 'disabled'}>Học ${n()} từ này ${icon('arrow')}</button></div>
       <div id="dr-pop" class="dr-pop" hidden></div></div>`;
     $$('.dr-w[data-p]', view).forEach(el => el.onclick = e => { e.stopPropagation(); pop(el); });
-    $('#dr-go', view).onclick = () => { P.stage = 'learn'; P.loop = null; X.save(); X.go(`#/doc/${d.id}/learn`); };
+    $('#dr-go', view).onclick = () => { P.stage = 'learn'; P.loop = null; drSave(); X.go(`#/doc/${d.id}/learn`); };
     $('.dr-page', view).onclick = e => { if (!e.target.closest('.dr-pop')) $('#dr-pop', view).hidden = true; };
   };
   const pop = el => {
@@ -102,7 +105,7 @@ function readStage(view, d, P, SG, head) {
     const r = el.getBoundingClientRect(), pr = $('#dr-pass', view).getBoundingClientRect();
     box.hidden = false; box.style.left = Math.max(8, Math.min(r.left - pr.left, pr.width - 300)) + 'px'; box.style.top = (r.bottom - pr.top + 8 + $('#dr-pass', view).offsetTop) + 'px';
     $('[data-say]', box).onclick = () => TTS.speak(it.t, { role: 'W' });
-    $('[data-tog]', box).onclick = () => { if (P.sel[it.key]) delete P.sel[it.key]; else P.sel[it.key] = it; X.save(); box.hidden = true;
+    $('[data-tog]', box).onclick = () => { if (P.sel[it.key]) delete P.sel[it.key]; else P.sel[it.key] = it; drSave(); box.hidden = true;
       $$('.dr-w[data-p]', view).forEach(x => x.classList.toggle('sel', !!P.sel[keyOf(d, SG[+x.dataset.p][+x.dataset.s])]));
       $('#dr-n', view).textContent = Object.keys(P.sel).length; const b = $('#dr-go', view); b.disabled = !Object.keys(P.sel).length; b.innerHTML = `Học ${Object.keys(P.sel).length} từ này ${icon('arrow')}`; };
   };
@@ -122,7 +125,7 @@ function learnStage(view, d, P, head) {
     nextQ(); };
   // bài đang học dở mà danh sách từ đã đổi → học lại từ đầu
   if (!T || T.total !== IT.length || IT.some(x => !T.st[x.key])) fresh();
-  const save = () => { P.loop = T; X.save(); };
+  const save = () => { P.loop = T; drSave(); };
   function refill() { while (T.active.length < 6 && T.waiting.length) T.active.push(T.waiting.shift()); }
   function others(k, field) { const me = byKey(k), seen = new Set([me[field].toLowerCase()]), out = [];
     const pool = [...shuffle(IT.filter(x => x.key !== k)), ...shuffle(d.gl.map(g => ({ t: g.t, mean: g.ctx }))), ...shuffle(X.VOCAB.filter(v => v.vi).slice(0, 400)).map(v => ({ t: v.w.split(' / ')[0], mean: v.vi }))];
@@ -261,18 +264,18 @@ function backStage(view, d, P, Q, head) {
         <div class="dr-bar"><span></span><button class="btn pri" id="dr-toqa">Sang trả lời câu hỏi ${icon('arrow')}</button></div>`
       : `<div class="dr-split" id="dr-split"><div class="card dr-passage dr-left" id="dr-pass">${passageHTML()}</div><div class="dr-right">${Q.map(qHTML).join('')}
           ${nAns === Q.length ? `<div class="card" style="text-align:center"><div class="h2">${nOk}/${Q.length} câu đúng</div><button class="btn pri" id="dr-fin" style="margin-top:10px">Lưu từ vào lịch ôn ${icon('arrow')}</button></div>` : ''}</div><svg class="dr-lines" id="dr-lines"></svg></div>`}</div>`;
-    $$('#dr-mode button', view).forEach(b => b.onclick = () => { P.backMode = b.dataset.v; X.save(); backStage(view, d, P, Q, head); });
+    $$('#dr-mode button', view).forEach(b => b.onclick = () => { P.backMode = b.dataset.v; drSave(); backStage(view, d, P, Q, head); });
     if (mode === 'tr') {
-      $$('[data-tr]', view).forEach(t => t.oninput = () => { P.tr[t.dataset.tr] = Object.assign(P.tr[t.dataset.tr] || {}, { v: t.value }); X.save(); });
-      $$('[data-show]', view).forEach(b => b.onclick = () => { const k = b.dataset.show; P.tr[k] = Object.assign(P.tr[k] || {}, { shown: !(P.tr[k] || {}).shown }); X.save(); paint(); });
-      $('#dr-toqa', view).onclick = () => { P.backMode = 'qa'; X.save(); paint(); window.scrollTo(0, 0); };
+      $$('[data-tr]', view).forEach(t => t.oninput = () => { P.tr[t.dataset.tr] = Object.assign(P.tr[t.dataset.tr] || {}, { v: t.value }); drSave(); });
+      $$('[data-show]', view).forEach(b => b.onclick = () => { const k = b.dataset.show; P.tr[k] = Object.assign(P.tr[k] || {}, { shown: !(P.tr[k] || {}).shown }); drSave(); paint(); });
+      $('#dr-toqa', view).onclick = () => { P.backMode = 'qa'; drSave(); paint(); window.scrollTo(0, 0); };
       return;
     }
-    $$('[data-o]', view).forEach(b => b.onclick = () => { const q = Q.find(x => x.id === b.closest('[data-q]').dataset.q); P.ans[q.id] = +b.dataset.o; P.lastQ = act = q.id; X.save();
+    $$('[data-o]', view).forEach(b => b.onclick = () => { const q = Q.find(x => x.id === b.closest('[data-q]').dataset.q); P.ans[q.id] = +b.dataset.o; P.lastQ = act = q.id; drSave();
       if (X.recordAnswer) try { X.recordAnswer(q, +b.dataset.o); } catch (e) {}
       paint(); const el = $(`[data-q="${CSS.escape(q.id)}"]`, view); if (el && !wide()) el.scrollIntoView({ block: 'nearest' }); });
     $$('[data-q]', view).forEach(c => c.onmouseenter = () => { if (P.ans[c.dataset.q] != null && act !== c.dataset.q) { act = c.dataset.q; lines(); } });
-    const fin = $('#dr-fin', view); if (fin) fin.onclick = () => { P.stage = 'done'; X.save(); X.go(`#/doc/${d.id}/done`); };
+    const fin = $('#dr-fin', view); if (fin) fin.onclick = () => { P.stage = 'done'; drSave(); X.go(`#/doc/${d.id}/done`); };
     // bấm 1 cặp → nháy chỗ tương ứng trong bài
     $$('[data-jump],[data-pq]', view).forEach(el => el.onclick = () => { const k = el.dataset.jump || el.dataset.pq, t = $(`[data-pp="${k}"]`, view); if (!t) return; if (!wide()) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); });
     lines(); drWatch($('#dr-split', view));
@@ -306,13 +309,13 @@ function doneStage(view, d, P, head) {
         const w = drWords()[slug] || { id: slug, w: it.t.toLowerCase() === it.t ? it.t : it.t.replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase()), pos: '', ipa: '', vi: it.mean + (it.other ? ` (khác: ${it.other})` : ''), def: '', ex: [it.sent], col: [], syn: [], fam: [], ant: [], note: 'Học từ bài đọc: ' + d.title, parts: [7], topics: ['Từ học qua bài đọc'], group: 'Từ học qua bài đọc', topic: 'Từ học qua bài đọc', kind: /\s/.test(it.t) ? 'phrase' : 'word', freq: 2, star: false };
         drWords()[slug] = w; inject(w); id = slug; }
       it.sid = id; X.srsReview(id, 3, 'type'); });
-    P.saved = Date.now(); P.done = Date.now(); X.addXP && X.addXP(10 + IT.length * 2, 'Đọc trước, học sau'); X.save();
+    P.saved = Date.now(); P.done = Date.now(); X.addXP && X.addXP(10 + IT.length * 2, 'Đọc trước, học sau'); drSave();
   }
   const ws = S().words || {}, fmt = t => new Date(t).toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric' });
   view.innerHTML = `<div class="page dr-page">${head}<div class="card" style="text-align:center"><div class="kicker syn">Xong bài này</div><div class="h1" style="margin:6px 0">${IT.length} từ đã vào lịch ôn</div>
     <p class="small muted">Lịch ôn ngắt quãng: từ nào nhớ tốt thì lần ôn sau giãn xa hơn (1 ngày → 3 ngày → 1 tuần…), từ nào quên sẽ quay lại sớm. Đến hạn, mục <b>Kho từ vựng</b> và trang <b>Hôm nay</b> sẽ báo số từ cần ôn.</p></div>
     <div class="card"><table class="dr-sched"><tbody>${IT.map(it => { const w = X.wordById[it.sid || it.vid], r = w && ws[w.id]; return `<tr><td><b>${esc(it.t)}</b></td><td class="small">${esc(it.mean)}</td><td class="small faint">${r && r.due ? 'ôn lại ' + fmt(r.due) : ''}</td></tr>`; }).join('')}</tbody></table></div>
     <div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><a class="btn pri" href="#/doc">Đọc bài khác ${icon('arrow')}</a><a class="btn" href="#/output">Nói và viết với từ vừa học</a><button class="btn ghost" id="dr-redo">Học lại bài này</button></div></div>`;
-  $('#dr-redo', view).onclick = () => { const st = S(); st.dr[d.id] = { sel: {}, stage: 'read' }; X.save(); X.go('#/doc/' + d.id); };
+  $('#dr-redo', view).onclick = () => { const st = S(); st.dr[d.id] = { sel: {}, stage: 'read', at: Date.now() }; curP = null; X.save(); X.go('#/doc/' + d.id); };
 }
 })();

@@ -111,7 +111,7 @@ X.vocabGame = (view, words, o = {}) => {
   const intro = () => {
     shell(`<div class="card vg-intro">${X.xiSay('wow', `${words.length} từ mới, 7 vòng chơi. Đúng liên tiếp 5 câu là có combo đó!`, 76)}<div class="kicker syn" style="margin-top:6px">${words.length} từ trong lượt này</div><div class="netw" style="margin:12px 0 18px">${words.map(w => `<span data-chip="${w.id}">${esc(w.w)}</span>`).join('')}</div>
       <div class="vg-steps">${ROUNDS.map((r, i) => `<div><b>${i + 1}. ${r.n}</b><span class="small muted">${r.d}</span></div>`).join('')}</div>
-      <p class="small muted" style="margin-top:14px">Đúng liên tiếp để giữ combo. Cứ 5 câu đúng liền nhau được thêm XP. Hết 6 vòng, các từ tự vào lịch ôn.</p>
+      <p class="small muted" style="margin-top:14px">Đúng liên tiếp để giữ combo. Cứ 5 câu đúng liền nhau được thêm XP. Hết ${ROUNDS.length} vòng, các từ tự vào lịch ôn.</p>
       <button class="btn pri lg" id="vg-go" style="margin-top:8px">Bắt đầu ${icon('arrow')}</button></div>`);
     st.r = 0; X.imgPrefetch && X.imgPrefetch(words).then(() => words.forEach(w => { const u = X.imgNow(w), el = $(`[data-chip="${w.id}"]`, view); if (u && el && !el.querySelector('img')) el.insertAdjacentHTML('afterbegin', `<img class="chip-img" src="${u}" alt="">`); })); $('#vg-go', view).onclick = runRound; document.onkeydown = e => { if (e.key === 'Enter') runRound(); };
   };

@@ -355,8 +355,60 @@ TTS.norm = t => String(t).replace(/\s+/g, ' ').trim();
 TTS.key = (role, text) => fnv(role + '|' + TTS.norm(text));
 let HAVE = null;
 const have = () => HAVE || (HAVE = new Set(String(window.AUDIO_HAVE || '').split(/\s+/).filter(Boolean)));
-TTS.hasFiles = () => have().size > 0;
+TTS.hasFiles = () => !!TTS.CLOUD || have().size > 0;
 TTS.fileFor = (role, text) => { const k = TTS.key(role, text); return have().has(k) ? 'audio/' + k + '.mp3' : (window.TOOEZ_AUD && window.TOOEZ_AUD[k]) || null; };   // TOOEZ_AUD: audio tạo trên trang Soạn đề, lưu ở Supabase
+/* ---- Giọng Google Chirp 3 HD trên máy chủ riêng (thư mục tts-worker/). Web tự tính mã file rồi tải thẳng, không cần hỏi trước.
+   Mã PHẢI giống hệt tts-worker/src/key.js (cyrb53 của "vai|câu"). Không có file (404) thì dùng file Kokoro cũ ở audio/, rồi mới tới giọng trình duyệt. */
+TTS.CLOUD = 'https://tts.2die429.com';
+const cyrb53 = (s, seed = 0) => {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+};
+TTS.key2 = (role, text) => 'v2/' + cyrb53(role + '|' + TTS.norm(text)).toString(16).padStart(14, '0');
+TTS.mem = {};   // file vừa tạo trong phiên (Sổ câu): mã → blob URL
+const NOFILE = new Map();   // file Chirp bị 404 trong phiên: khỏi thử lại trong 2 phút
+TTS.cloudFor = (role, text) => { if (!TTS.CLOUD) return null; const k = TTS.key2(role, text); if (TTS.mem[k]) return TTS.mem[k];
+  const t = NOFILE.get(k); return t && Date.now() - t < 120000 ? null : `${TTS.CLOUD}/a/${k}.mp3`; };
+// câu học sinh tự gõ (Sổ câu): mỗi câu cố định một giọng nữ hoặc nam theo nội dung, cả danh sách lẫn đều hai giọng
+TTS.roleFor = text => cyrb53('v|' + TTS.norm(text)) % 2 ? 'W' : 'M';
+// Cloudflare Turnstile (vô hình): chứng minh là người thật trước khi máy chủ tạo giọng mới. Chỉ chạy trên tooez.netlify.app
+TTS.TURNSTILE = '0x4AAAAAAGJqfSwPghR2Q2Bm';
+let tsP = null;
+const turnstile = () => tsP || (tsP = new Promise((res, rej) => {
+  if (window.turnstile) return res(window.turnstile);
+  window.__tsLoad = () => res(window.turnstile);
+  const sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__tsLoad&render=explicit'; sc.async = true;
+  sc.onerror = () => { tsP = null; rej(new Error('turnstile')); }; document.head.appendChild(sc);
+}));
+const tsToken = async () => { const T = await turnstile(); return new Promise(res => {
+  const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(box);
+  let id = null; const done = v => { clearTimeout(to); res(v); setTimeout(() => { try { T.remove(id); } catch (e) {} box.remove(); }, 0); }, to = setTimeout(() => done(null), 20000);
+  try { id = T.render(box, { sitekey: TTS.TURNSTILE, callback: done, 'error-callback': () => done(null), 'expired-callback': () => done(null) }); } catch (e) { done(null); }
+}); };
+// tạo giọng cho câu tự gõ, chạy ngầm. Chưa đăng nhập / Turnstile lỗi / hết lượt → bỏ qua, lúc nghe sẽ dùng giọng trình duyệt
+TTS.gen = async (role, text) => {
+  if (!TTS.CLOUD || !X.cloudToken) return false;
+  const k = TTS.key2(role, text); if (TTS.mem[k]) return true;
+  try {
+    if ((await fetch(`${TTS.CLOUD}/a/${k}.mp3`, { method: 'HEAD' })).ok) return true;   // đã có sẵn
+    const tok = await X.cloudToken(); if (!tok) return false;
+    const ts = await tsToken().catch(() => null); if (!ts) return false;
+    const r = await fetch(TTS.CLOUD + '/gen', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: JSON.stringify({ role, text: TTS.norm(text), ts }) });
+    if (!r.ok) return false;
+    if ((r.headers.get('content-type') || '').startsWith('audio/')) TTS.mem[k] = URL.createObjectURL(await r.blob());
+    NOFILE.delete(k); return true;
+  } catch (e) { return false; }
+};
+// tải trước file của các câu sắp đọc (cả bài hội thoại, trang đề tiếp theo...): bấm loa là có tiếng ngay
+const PRE = new Set();
+TTS.prefetch = lines => {
+  if (!TTS.CLOUD || TTS.useVoice() || (navigator.connection && navigator.connection.saveData)) return;
+  (lines || []).forEach(L => { if (!L || !L.t) return; splitLetter(L.t).forEach(p => { const u = TTS.cloudFor(L.s || 'W', p);
+    if (!u || u.startsWith('blob:') || PRE.has(u)) return; PRE.add(u); fetch(u, { priority: 'low' }).then(r => { if (r.status === 404) NOFILE.set(TTS.key2(L.s || 'W', p), Date.now()); }).catch(() => {}); }); });
+};
 // một thẻ audio dùng chung: iPhone chỉ cho phát tiếp nếu thẻ đã được "mở khóa" bằng một lần chạm
 const AEL = typeof Audio !== 'undefined' ? new Audio() : null;
 // 0,1 giây im lặng: phát một lần trong cú chạm đầu tiên để trình duyệt (Opera, Safari...) cho phép phát tiếp về sau
@@ -375,14 +427,18 @@ const askTap = src => new Promise(res => {
   b.onclick = () => { b.remove(); const p = AEL.play(); if (p && p.then) p.then(() => res(true), () => res(false)); else res(true); };
   document.body.appendChild(b); setTimeout(() => { if (b.isConnected) { b.remove(); res(false); } }, 15000);
 });
-const playSrc1 = (src, rate) => new Promise(res => {
+// nút vừa bấm (để hiện "đang tải" lên đúng nút đó)
+let tapEl = null, tapAt = 0;
+document.addEventListener('pointerdown', e => { tapEl = e.target.closest && e.target.closest('button, a, [data-say], [data-sayt], [data-sayw], [data-say2]'); tapAt = Date.now(); }, true);
+const playSrc1 = (src, rate, loadMs = 12000) => new Promise(res => {
   if (!AEL) return res(false);
-  let done = false, wd = 0; const fin = ok => { if (!done) { done = true; clearTimeout(wd); AEL.onended = AEL.onerror = AEL.onplaying = AEL.onstalled = null; res(ok); } };
+  const el = tapEl && Date.now() - tapAt < 1500 ? tapEl : null, sp = setTimeout(() => el && el.classList.add('tts-wait'), 250);
+  let done = false, wd = 0; const fin = ok => { if (!done) { done = true; clearTimeout(wd); clearTimeout(sp); el && el.classList.remove('tts-wait'); AEL.onended = AEL.onerror = AEL.onplaying = AEL.onstalled = null; res(ok); } };
   AEL.onended = () => fin(true);
   AEL.onerror = () => { console.warn('[TOOEZ audio] lỗi tải', src, AEL.error && AEL.error.code); fin(false); };
   // chưa phát được sau 12 giây (mạng chậm) → coi như lỗi để thử lại; đã phát thì chờ hết độ dài file + 3 giây
-  wd = setTimeout(() => { if (AEL.paused || AEL.currentTime === 0) { try { AEL.pause(); } catch (e) {} fin(false); } }, 12000);
-  AEL.onplaying = () => { clearTimeout(wd); const d = isFinite(AEL.duration) ? AEL.duration : 30; wd = setTimeout(() => fin(true), (d / (rate || 1) + 3) * 1000); };
+  wd = setTimeout(() => { if (AEL.paused || AEL.currentTime === 0) { try { AEL.pause(); } catch (e) {} fin(false); } }, loadMs);
+  AEL.onplaying = () => { clearTimeout(wd); clearTimeout(sp); el && el.classList.remove('tts-wait'); const d = isFinite(AEL.duration) ? AEL.duration : 30; wd = setTimeout(() => fin(true), (d / (rate || 1) + 3) * 1000); };
   AEL.src = src; AEL.playbackRate = rate; AEL.defaultPlaybackRate = rate;
   const p = AEL.play();
   if (p && p.catch) p.catch(e => {
@@ -397,16 +453,25 @@ const playSrc = async (src, rate) => { const tk = TTS.token; let ok = await play
 // "(A) The man is..." / "A. Yes, ..." → đọc chữ cái và câu bằng hai file riêng, nên một câu dùng được cho mọi thứ tự đáp án
 const splitLetter = t => { const m = TTS.norm(t).match(/^\(?([A-D])[).]\s+(.+)$/); return m ? [m[1] + '.', m[2]] : [TTS.norm(t)]; };
 TTS.files = (role, text) => { const parts = splitLetter(text), srcs = parts.map(p => TTS.fileFor(role, p)); return srcs.every(Boolean) ? srcs : null; };
-// Edge có sẵn giọng Microsoft "Online (Natural)" rất hay → mặc định dùng luôn giọng đó; trình duyệt khác dùng file thu sẵn
 TTS.edgeNatural = () => TTS.voices.some(v => /Microsoft/i.test(v.name) && /Natural/i.test(v.name));
-TTS.useVoice = () => { const m = S.profile.voiceSrc || 'auto'; return m === 'browser' ? TTS.voices.length > 0 : m === 'files' ? false : TTS.edgeNatural(); };
+// "Tự động" và "Giọng TOOEZ": file Chirp → file cũ → giọng trình duyệt. Chỉ khi chọn "Giọng trình duyệt" mới bỏ qua file.
+TTS.useVoice = () => S.profile.voiceSrc === 'browser' && TTS.voices.length > 0;
 TTS.speak = async (text, opt = {}) => {
-  const role = opt.role || (opt.sex === 'M' ? 'M' : 'W'), srcs = TTS.useVoice() && !opt.forceFile ? null : TTS.files(role, text);
-  if (srcs) { const tk = TTS.token, rate = (opt.rate || 1) * (S.profile.rate || 1);
-    for (let i = 0; i < srcs.length; i++) { if (tk !== TTS.token) return; const ok = await playSrc(srcs[i], rate); if (tk !== TTS.token || ok === 'stop') return; if (!ok) return TTS.speakVoice(text, opt); if (i < srcs.length - 1) await new Promise(r => setTimeout(r, 150)); }
-    return; }
-  if (window.__audioMiss) window.__audioMiss.push(role + '|' + TTS.norm(text));
-  return TTS.speakVoice(text, opt);
+  const role = opt.role || (opt.sex === 'M' ? 'M' : 'W');
+  if (TTS.useVoice() && !opt.forceFile) return TTS.speakVoice(text, opt);
+  const parts = splitLetter(text), tk = TTS.token, rate = (opt.rate || 1) * (S.profile.rate || 1);
+  if (parts.length > 1) TTS.prefetch([{ s: role, t: text }]);
+  for (let i = 0; i < parts.length; i++) {
+    if (tk !== TTS.token) return;
+    const p = parts[i], cloud = TTS.cloudFor(role, p), old = TTS.fileFor(role, p);
+    let ok = false;
+    if (cloud) { ok = await playSrc1(cloud, rate, 2000); if (ok === false && tk === TTS.token && !cloud.startsWith('blob:')) NOFILE.set(TTS.key2(role, p), Date.now()); }
+    if (tk !== TTS.token || ok === 'stop') return;
+    if (!ok && old) ok = await playSrc(old, rate);
+    if (tk !== TTS.token || ok === 'stop') return;
+    if (!ok) { (window.__audioMiss || (window.__audioMiss = [])).push(role + '|' + p); return TTS.speakVoice(parts.slice(i).join(' '), opt); }
+    if (i < parts.length - 1) await new Promise(r => setTimeout(r, 150));
+  }
 };
 TTS.speakVoice = (text, opt = {}) => new Promise(res => {
   if (opt.role === 'VI') return setTimeout(res, 900 + String(text).length * 45);   // không có giọng Việt thì không đọc bằng giọng tiếng Anh
@@ -432,7 +497,7 @@ TTS.speakVoice = (text, opt = {}) => new Promise(res => {
 TTS.stop = () => { TTS.token++; if ('speechSynthesis' in window) speechSynthesis.cancel(); if (AEL && !AEL.paused) { try { AEL.pause(); } catch (e) {} } };
 // lines: [{s:'M'|'W'|'Q'|'A'|'N', t}]
 TTS.play = async (lines, onLine) => {
-  TTS.stop(); const tk = TTS.token;
+  TTS.stop(); const tk = TTS.token; TTS.prefetch(lines);
   const sexOf = { M: 'M', W: 'W', Q: 'W', A: 'M', N: 'W', S: 'W', SM: 'M', M2: 'M' };   // S = người nói bài Part 4 (nữ), SM = người nói nam
   const langs = ['en-US', 'en-GB', 'en-AU'];
   const qLang = S.profile.accent;

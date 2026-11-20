@@ -10,6 +10,8 @@ const { $, esc, icon } = X;
 if (!C.url || !C.key) { X.cloud = { on: false }; return; }
 
 let sb = null, user = null, lastStamp = null, pushedRev = -1, busy = false, ready = false;
+// token đăng nhập hiện tại (máy chủ giọng đọc dùng để biết là học sinh thật). Chưa đăng nhập → null
+X.cloudToken = async () => { if (!sb || !user) return null; try { const { data } = await sb.auth.getSession(); return (data.session && data.session.access_token) || null; } catch (e) { return null; } };
 const st = { state: 'off', at: 0, msg: '' };   // off | sync | ok | err
 const APP = /Zalo|FBAN|FBAV|FB_IAB|Messenger|Instagram|musical_ly|TikTok|\bLine\//i.test(navigator.userAgent || '');
 

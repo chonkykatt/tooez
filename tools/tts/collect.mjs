@@ -4,7 +4,6 @@
 //   1. duyệt dữ liệu: câu hỏi, lời dẫn đề, lượt Lab (chạy nhiều lần vì có ngẫu nhiên), thẻ từ, từ vựng, Nhớ 1 phát, Đọc trước, Nói và viết ra
 //   2. mở từng trang: lấy chữ trong các nút loa (data-say...) và câu bấm-để-nghe trong bài học
 //   3. nghe lén TTS.speak trong lúc mở trang: câu nào web thật sự gửi đi đọc thì ghi lại
-// Kèm thống kê: bao nhiêu file Kokoro cũ (data/audio-index.js) được tìm lại → biết danh sách có sót không.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -114,14 +113,13 @@ for (const h of queue) {
   links.filter(l => /^\/(lesson|unit|doc|output|library|ngop)/.test(l) && !seen.has(l)).forEach(l => queue.push(l));
 }
 
-// ---- kết quả + so với file Kokoro cũ
+// ---- kết quả
 const res = await page.evaluate(() => {
-  const H = new Set(String(window.AUDIO_HAVE || '').split(/\s+/).filter(Boolean)), L = [...window.__tts.values()];
-  const found = new Set(L.map(x => X.TTS.key(x.role, x.text)).filter(k => H.has(k)));
+  const L = [...window.__tts.values()];
   const bySrc = {}; L.forEach(x => { bySrc[x.src] = (bySrc[x.src] || 0) + 1; });
-  return { lines: L.sort((a, b) => (a.role + a.text).localeCompare(b.role + b.text)), oldTotal: H.size, oldFound: found.size, bySrc };
+  return { lines: L.sort((a, b) => (a.role + a.text).localeCompare(b.role + b.text)), bySrc };
 });
 const chars = res.lines.reduce((a, x) => a + x.text.length, 0);
 fs.writeFileSync(OUT, JSON.stringify(res.lines.map(({ role, text }) => ({ role, text }))));
-console.log(JSON.stringify({ pages: seen.size, lines: res.lines.length, chars, oldFound: `${res.oldFound}/${res.oldTotal}`, data: dataStats, bySrc: res.bySrc, roles: res.lines.reduce((o, x) => (o[x.role] = (o[x.role] || 0) + 1, o), {}), pageErrors: errs.length, out: path.relative(ROOT, OUT) }, null, 1));
+console.log(JSON.stringify({ pages: seen.size, lines: res.lines.length, chars, data: dataStats, bySrc: res.bySrc, roles: res.lines.reduce((o, x) => (o[x.role] = (o[x.role] || 0) + 1, o), {}), pageErrors: errs.length, out: path.relative(ROOT, OUT) }, null, 1));
 await browser.close(); server.close();

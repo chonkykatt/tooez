@@ -2,7 +2,10 @@
 //   GET  /a/<mã>.mp3  phát file đã có (ai cũng đọc được). Cloudflare nhớ file ở máy chủ gần người dùng, trình duyệt giữ 1 năm.
 //   POST /gen         tạo giọng cho câu học sinh tự gõ: cần đăng nhập Supabase + Turnstile, mỗi người có hạn mức mỗi ngày
 //   POST /ci          GitHub Actions / admin tạo giọng cho nội dung viết sẵn (khóa CI_TOKEN)
-//   GET  /voices, /usage   tra danh sách giọng của Google, số ký tự đã dùng (khóa CI_TOKEN)
+//   POST /admin-gen   admin tạo giọng từ trang Soạn đề (đăng nhập Supabase + is_admin())
+//   POST /has         hỏi một loạt mã xem mã nào chưa có file (Soạn đề quét câu thiếu)
+//   POST /miss        web báo câu phải đọc bằng giọng trình duyệt (chưa có file) → lưu lại để tạo bù
+//   GET  /voices, /usage, /misses   tra giọng Google, số ký tự đã dùng, câu bị lọt (khóa CI_TOKEN)
 // Mọi lần gọi Google đều qua bộ đếm tháng: chạm CAP_CHARS là dừng, vì Google không tự dừng khi hết phần miễn phí.
 import { keyOf, norm } from './key.js';
 
@@ -52,6 +55,7 @@ async function make(env, ctx, role, text, key) {
   const { bytes, voice } = await synth(env, role, text);
   ctx.waitUntil(Promise.all([
     env.AUD.put(key + '.mp3', bytes, { httpMetadata: { contentType: 'audio/mpeg' }, customMetadata: { role, voice, text: text.slice(0, 1000) } }),
+    env.AUD.delete('miss/' + key + '.json'),
     addNum(env, `usage/${month()}.json`, text.length),
   ]));
   return { bytes, voice };
@@ -63,6 +67,14 @@ async function userOf(env, req) {
   const r = await fetch(env.SUPABASE_URL + '/auth/v1/user', { headers: { apikey: env.SUPABASE_ANON, authorization: 'Bearer ' + tok } });
   if (!r.ok) return null; const u = await r.json(); return u && u.id ? u : null;
 }
+async function isAdmin(env, req) {
+  const tok = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''); if (!tok) return false;
+  const r = await fetch(env.SUPABASE_URL + '/rest/v1/rpc/is_admin', { method: 'POST', headers: { apikey: env.SUPABASE_ANON, authorization: 'Bearer ' + tok, 'content-type': 'application/json' }, body: '{}' });
+  return r.ok && (await r.json()) === true;
+}
+// giới hạn số lượt theo IP trong từng máy chủ (đủ để chặn spam đơn giản)
+const HITS = new Map();
+const tooMany = (ip, n, ms = 60000) => { const now = Date.now(), a = (HITS.get(ip) || []).filter(t => now - t < ms); a.push(now); HITS.set(ip, a); if (HITS.size > 5000) HITS.clear(); return a.length > n; };
 async function turnstileOk(env, token, ip) {
   if (!token) return false;
   const f = new FormData(); f.append('secret', env.TURNSTILE_SECRET); f.append('response', token); if (ip) f.append('remoteip', ip);
@@ -106,6 +118,55 @@ export default {
         const { bytes, voice } = await make(env, ctx, role, text, key);
         ctx.waitUntil(addNum(env, uk, 1));
         return new Response(bytes, { headers: { ...C, 'content-type': 'audio/mpeg', 'x-key': key, 'x-voice': voice, 'cache-control': 'no-store' } });
+      }
+
+      // ---------- admin tạo giọng từ trang Soạn đề
+      if (p === '/admin-gen' && req.method === 'POST') {
+        if (!originOk(env, req.headers.get('origin'))) return json({ error: 'origin' }, 403, C);
+        if (!(await isAdmin(env, req))) return json({ error: 'chỉ admin' }, 403, C);
+        const b = await req.json().catch(() => ({})), role = b.role, text = norm(b.text || '');
+        if (!VOICES[role]) return json({ error: 'vai không hợp lệ: ' + role }, 400, C);
+        if (!textOk(text, MAX_CI)) return json({ error: `câu rỗng, quá ${MAX_CI} ký tự hoặc có ký tự lạ` }, 400, C);
+        const key = keyOf(role, text);
+        if (await env.AUD.head(key + '.mp3')) return json({ key, exists: true }, 200, C);
+        const { voice } = await make(env, ctx, role, text, key);
+        return json({ key, voice, chars: text.length }, 201, C);
+      }
+
+      // ---------- mã nào chưa có file (tối đa 500 mã mỗi lần)
+      if (p === '/has' && req.method === 'POST') {
+        if (!originOk(env, req.headers.get('origin')) && !ciOk(env, req)) return json({ error: 'origin' }, 403, C);
+        const b = await req.json().catch(() => ({})), keys = Array.isArray(b.keys) ? b.keys.filter(k => /^v\d+\/[0-9a-f]{14}$/.test(k)).slice(0, 500) : [];
+        const st = await Promise.all(keys.map(k => env.AUD.head(k + '.mp3')));
+        return json({ missing: keys.filter((k, i) => !st[i]) }, 200, C);
+      }
+
+      // ---------- web báo câu bị lọt (đọc bằng giọng trình duyệt vì chưa có file)
+      if (p === '/miss' && req.method === 'POST') {
+        if (!originOk(env, req.headers.get('origin'))) return json({ error: 'origin' }, 403, C);
+        if (tooMany('miss:' + (req.headers.get('cf-connecting-ip') || '?'), 30)) return json({ error: 'quá nhiều' }, 429, C);
+        const b = await req.json().catch(() => ({})), items = (Array.isArray(b.items) ? b.items : []).slice(0, 20);
+        let saved = 0;
+        for (const it of items) {
+          const role = VOICES[it && it.role] ? it.role : null, text = norm((it && it.text) || '');
+          if (!role || !textOk(text, 300)) continue;
+          const key = keyOf(role, text);
+          if (await env.AUD.head(key + '.mp3') || await env.AUD.head('miss/' + key + '.json')) continue;
+          ctx.waitUntil(env.AUD.put('miss/' + key + '.json', JSON.stringify({ role, text, at: new Date().toISOString(), page: String(b.page || '').slice(0, 100) })));
+          saved++;
+        }
+        return json({ saved }, 200, C);
+      }
+      if (p === '/misses' && req.method === 'DELETE' && ciOk(env, req)) {   // bỏ câu rác khỏi danh sách: ?key=v2/... (không có key = xoá hết)
+        const k = url.searchParams.get('key'); let n = 0, cursor;
+        if (k) { await env.AUD.delete('miss/' + k + '.json'); n = 1; }
+        else do { const l = await env.AUD.list({ prefix: 'miss/', cursor, limit: 1000 }); await Promise.all(l.objects.map(o => env.AUD.delete(o.key))); n += l.objects.length; cursor = l.truncated ? l.cursor : null; } while (cursor);
+        return json({ deleted: n });
+      }
+      if (p === '/misses' && ciOk(env, req)) {
+        const out = []; let cursor;
+        do { const l = await env.AUD.list({ prefix: 'miss/', cursor, limit: 1000 }); for (const o of l.objects) { const v = await env.AUD.get(o.key); if (v) out.push(await v.json()); } cursor = l.truncated ? l.cursor : null; } while (cursor && out.length < 5000);
+        return json({ count: out.length, items: out });
       }
 
       // ---------- nội dung viết sẵn (GitHub Actions / admin)

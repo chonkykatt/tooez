@@ -1,0 +1,46 @@
+# Giọng đọc: mỗi PR tự gom mọi câu web sẽ đọc to và tạo giọng Chirp 3 HD cho câu còn thiếu.
+# Cần secret TTS_CI_TOKEN (Settings → Secrets and variables → Actions), cùng giá trị CI_TOKEN của tts-worker.
+# Chưa có secret thì chỉ kiểm tra: còn câu thiếu thì báo đỏ, kèm danh sách trong phần Summary.
+name: Giọng đọc
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/tts/package-lock.json
+
+      - name: Cài công cụ
+        working-directory: tools/tts
+        run: npm ci --no-fund --no-audit
+
+      - name: Gom mọi câu web đọc to
+        working-directory: tools/tts
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node collect.mjs lines.json
+
+      - name: Tạo giọng cho câu còn thiếu
+        working-directory: tools/tts
+        env:
+          TTS_CI_TOKEN: ${{ secrets.TTS_CI_TOKEN }}
+          TTS_PARALLEL: 4
+        run: node generate.mjs lines.json

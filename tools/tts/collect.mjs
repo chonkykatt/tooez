@@ -40,6 +40,8 @@ await page.evaluate(() => {
   const out = window.__tts = new Map(), norm = X.TTS.norm;
   window.__add = (role, t, src) => {
     if (t == null) return; t = norm(String(t)); if (!/[A-Za-z]/.test(t)) return;
+    // chỉ vai VI mới được có chữ tiếng Việt; câu có thẻ HTML là chữ hiển thị, không phải lời đọc
+    if (/<[a-z\/]/i.test(t) || (role !== 'VI' && /[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹìíòóùúýàáèã]/i.test(t))) return;
     const m = t.match(/^\(?([A-D])[).]\s+(.+)$/);
     (m ? [m[1] + '.', m[2]] : [t]).forEach(x => { const k = role + '|' + x; if (!out.has(k)) out.set(k, { role, text: x, src }); });
   };

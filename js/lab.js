@@ -341,6 +341,7 @@ function run(view, L, mode, only, resume) {
   let tm = null;
   const stop = () => { clearInterval(tm); TTS.stop(); };
   X.onLeave(stop);
+  X.guard(() => st.i < rs.length && (st.i > 0 || st.answered) ? 'Tiến độ lượt này được lưu lại, quay lại Lab này là làm tiếp được.' : null);
   const draw = () => {
     stop();
     if (st.i >= rs.length) return end();
@@ -355,7 +356,7 @@ function run(view, L, mode, only, resume) {
         <div class="${R.locate ? 'lines-pick' : 'opts'}" id="lb-opts">${R.opts.map((o, k) => R.locate ? `<button data-o="${k}">${esc(o)}</button>` : `<button class="opt" data-o="${k}"><span class="L">${LETTERS[k] || k + 1}</span><span>${esc(o)}</span></button>`).join('')}</div>
         <div id="lb-fb"></div></div></div></div>`;
     $$('[data-o]', view).forEach(b => b.onclick = () => answer(+b.dataset.o));
-    const qb = $('[data-quit]', view); if (qb) qb.onclick = () => X.sessDel(sKey);
+    const qb = $('[data-quit]', view); if (qb) qb.onclick = () => { X.sessDel(sKey); X.guard(null); };   // bấm ✕: thoát hẳn, không hỏi
     const pl = $('#lb-play', view); if (pl) { pl.onclick = () => TTS.play(R.audio); setTimeout(() => TTS.play(R.audio), 250); }
     // bài nghe: giấu lời thoại cho đến khi chọn xong (như đề thật)
     if (R.audio) $$('#lb-q .dlg', view).forEach(d => { d.classList.add('dlg-hide'); d.insertAdjacentHTML('beforebegin', '<div class="dlg-ph">🎧 Nghe đoạn hội thoại. Lời thoại hiện sau khi bạn chọn.</div>'); });

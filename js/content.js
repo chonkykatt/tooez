@@ -73,7 +73,7 @@
     list = list.map(r => { const d = clean(r.data || {}); if (d && typeof d === 'object') { if ('img' in d) d.img = safeUrl(d.img); if ('u' in d) d.u = safeUrl(d.u); } return Object.assign({}, r, { data: d }); });
     const pics = [];
     const run = r => { const sig = r.kind + '|' + r.id + '|' + JSON.stringify(r.data); if (DONE.has(sig)) return; let ok = true;
-      try { if (r.kind === 'aud') { (window.TOOEZ_AUD || (window.TOOEZ_AUD = {}))[r.id] = r.data.u; return DONE.add(sig); } if (r.kind === 'item') applyItem(r.id, r.data); else if (r.kind === 'pic') applyPic(r.id, r.data); else if (r.kind === 'exam') applyExam(r.id, r.data); else if (r.kind === 'add') ok = applyAdd(r.id, r.data); else if (r.kind === 'obj') ok = applyObj(r.id, r.data); } catch (e) { ok = false; console.warn('content', r.id, e); }
+      try { if (r.kind === 'aud') return DONE.add(sig);   /* audio Kokoro cũ do admin tạo: không dùng nữa, giọng nằm ở máy chủ giọng đọc */ if (r.kind === 'item') applyItem(r.id, r.data); else if (r.kind === 'pic') applyPic(r.id, r.data); else if (r.kind === 'exam') applyExam(r.id, r.data); else if (r.kind === 'add') ok = applyAdd(r.id, r.data); else if (r.kind === 'obj') ok = applyObj(r.id, r.data); } catch (e) { ok = false; console.warn('content', r.id, e); }
       if (ok) { DONE.add(sig); if (r.kind === 'pic') pics.push(r.id); } };
     const hide = r => r.kind === 'obj' && r.data && r.data._hidden;
     list.filter(r => !hide(r)).forEach(run);

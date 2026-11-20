@@ -133,9 +133,13 @@ function itemForm(main, id) {
       </div></div>`;
   const msg = (t, ok) => { const el = $('#f-msg', main); el.textContent = t; el.style.color = ok ? 'var(--sage)' : 'var(--red)'; };
   // từng câu audio của câu hỏi này: đã có file chưa, bấm nghe thử
-  const audSt = () => { const box = $('#f-audst', main); if (!box) return; const L = it.audio || [];
+  const have = { missing: new Set() };
+  const audSt = async () => { const box = $('#f-audst', main); if (!box) return; const L = it.audio || [];
     if (!L.length) { box.innerHTML = ''; return; }
-    box.innerHTML = `<label>Kiểm tra audio (đang lưu)</label>${L.map((l, i) => { const ok = !!X.TTS.files(l.s, l.t); return `<div class="row small sd-aline"><button class="icon-btn" data-pl="${i}" title="Nghe thử">${icon('play')}</button><span class="pill ${ok ? 'sage' : 'gold'}">${ok ? 'có file' : 'chưa có file'}</span><span class="grow">${esc(l.s)}: ${esc(l.t)}</span></div>`; }).join('')}`;
+    have.missing = new Set(await missingKeys(L.flatMap(l => splitL(l.t).map(x => X.TTS.key2(l.s, x)))).catch(() => []));
+    if (!box.isConnected) return;
+    const ok = l => splitL(l.t).every(x => !have.missing.has(X.TTS.key2(l.s, x)));
+    box.innerHTML = `<label>Kiểm tra audio (đang lưu)</label>${L.map((l, i) => { return `<div class="row small sd-aline"><button class="icon-btn" data-pl="${i}" title="Nghe thử">${icon('play')}</button><span class="pill ${ok(l) ? 'sage' : 'gold'}">${ok(l) ? 'có file' : 'chưa có file'}</span><span class="grow">${esc(l.s)}: ${esc(l.t)}</span></div>`; }).join('')}`;
     $$('[data-pl]', box).forEach(b => b.onclick = () => { X.TTS.stop(); X.TTS.play([L[+b.dataset.pl]]); }); };
   audSt(); X.__audSt = audSt;
   $('#f-img', main).onchange = async ev => { const f = ev.target.files[0]; if (!f) return; msg('Đang tải ảnh…', true);
@@ -332,14 +336,20 @@ function otherTab(main) {
 /* ================= Tự tạo audio cho chỗ vừa sửa (giọng Kokoro giống audio có sẵn, chạy ngay trong trình duyệt) =================
    Lần đầu tải mô hình giọng đọc khoảng 90 MB (trình duyệt nhớ lại cho các lần sau). Mỗi câu thành 1 file mp3 nhỏ,
    tải lên kho "content" của Supabase, học sinh nghe được ngay ở lần mở web tiếp theo. */
-const VO = { M2: 'bm_daniel', SM: 'bm_lewis', W: 'af_heart', M: 'am_michael', Q: 'af_sarah', A: 'bm_george', S: 'bf_emma', K: 'bf_isabella', N: 'am_fenrir' };
-const cleanTxt = t => String(t).replace(/\$(\d(?:[\d,]*\d)?)(?:\.(\d+))?(\s(?:million|billion|thousand))?/g, (m, d, c, sc) => `${d.replace(/,/g, '')}${sc || ''} dollars${c && +c ? ' and ' + (+c) + ' cents' : ''}`)
-  .replace(/(?<=[a-z])\s*\/\s*(?=[a-z])/g, ' or ').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim();
 const splitL = t => { const m = X.TTS.norm(t).match(/^\(?([A-D])[).]\s+(.+)$/); return m ? [m[1] + '.', m[2]] : [X.TTS.norm(t)]; };
+// hỏi máy chủ giọng đọc: mã nào chưa có file (mỗi lần tối đa 500 mã)
+async function missingKeys(keys) {
+  const out = [], U = [...new Set(keys)];
+  for (let i = 0; i < U.length; i += 500) {
+    const r = await fetch(X.TTS.CLOUD + '/has', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keys: U.slice(i, i + 500) }) });
+    if (!r.ok) throw new Error('máy chủ giọng đọc trả lỗi ' + r.status); out.push(...(await r.json()).missing);
+  }
+  return out;
+}
 // gom mọi câu cần đọc trên web, trả về những câu chưa có file
 async function scanMissing() {
   const T = X.TTS, o = new Map();
-  const add = (s, t) => { if (!t || !/[A-Za-z]/.test(t)) return; splitL(t).forEach(x => { if (!T.fileFor(s, x)) o.set(s + '|' + x, { role: s, text: x, key: T.key(s, x) }); }); };
+  const add = (s, t) => { if (!t || !/[A-Za-z]/.test(t)) return; splitL(t).forEach(x => o.set(s + '|' + x, { role: s, text: x, key: T.key2(s, x) })); };
   allItems().forEach(i => (i.audio || []).forEach(a => add(a.s, a.t)));
   CT().rows().filter(r => r.kind === 'pic').forEach(r => { const w = X.VOCAB.find(v => X.imgSlug(v) === r.id); if (w && w.ex && w.ex[0]) add('W', w.ex[0]); });   // nút loa ở trang từ vựng
   if (X.reelLines && CT().rows().some(r => /^REEL\b/.test(r.id))) (window.REEL || []).forEach(w => { try { X.reelLines(w).en.forEach(([s, t]) => add(s, t)); } catch (e) {} });   // Nhớ 1 phát: chỉ quét khi đã sửa
@@ -350,50 +360,25 @@ async function scanMissing() {
   if (CT().rows().some(r => r.kind === 'pic')) for (const l of Object.values(X.LABS).filter(l => l.kind === 'pic')) for (let i = 0; i < 12; i++) {
     try { (X.picRounds(l) || []).forEach(r => (r.audio || []).forEach(a => add(a.s, a.t))); } catch (e) {}
     await new Promise(r => setTimeout(r, 0)); }
-  return [...o.values()];
-}
-let KOK = null;
-async function kokoro(prog) {
-  if (KOK) return KOK;
-  const m = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js');
-  const pc = p => { if (p && p.status === 'progress' && /onnx/.test(p.file || '')) prog(`🔊 Đang tải giọng đọc ${Math.round(p.progress || 0)}% (chỉ lần đầu, máy sẽ nhớ cho các lần sau)`); };
-  // máy có card đồ họa (WebGPU): chưa tới 1 giây mỗi câu; không có thì chạy bằng CPU, chậm hơn nhiều (20-30 giây mỗi câu)
-  if (navigator.gpu) { try { KOK = await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'fp32', device: 'webgpu', progress_callback: pc }); return KOK; } catch (e) { console.warn('webgpu', e); } }
-  KOK = await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'wasm', progress_callback: pc });
-  return KOK;
-}
-const lame = () => window.lamejs ? Promise.resolve(window.lamejs) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'js/vendor/lame-1.2.1.min.js'; s.onload = () => res(window.lamejs); s.onerror = rej; document.head.appendChild(s); });
-async function toMp3(f32, sr) {
-  const L = await lame(); let a = 0, b = f32.length - 1; while (a < b && Math.abs(f32[a]) < 0.004) a++; while (b > a && Math.abs(f32[b]) < 0.004) b--;
-  const pad = n => new Float32Array(Math.round(sr * n)), body = f32.subarray(Math.max(0, a - sr * 0.02), Math.min(f32.length, b + sr * 0.04));
-  const all = new Float32Array(pad(.08).length + body.length + pad(.12).length); all.set(body, pad(.08).length);
-  const i16 = new Int16Array(all.length); for (let i = 0; i < all.length; i++) i16[i] = Math.max(-1, Math.min(1, all[i])) * 32767;
-  const enc = new L.Mp3Encoder(1, sr, 48), out = [];
-  for (let i = 0; i < i16.length; i += 1152) { const buf = enc.encodeBuffer(i16.subarray(i, i + 1152)); if (buf.length) out.push(new Uint8Array(buf)); }
-  const fl = enc.flush(); if (fl.length) out.push(new Uint8Array(fl));
-  return new Blob(out, { type: 'audio/mpeg' });
+  const all = [...o.values()], miss = new Set(await missingKeys(all.map(x => x.key)));
+  return all.filter(x => miss.has(x.key));
 }
 let audBusy = false;
+// tạo giọng Chirp cho các câu thiếu, qua máy chủ giọng đọc (chỉ tài khoản admin mới được)
 async function makeAudio(list, bar) {
   if (audBusy || !list.length) return; audBusy = true;
   const say = t => { bar.innerHTML = t; };
   try {
-    const tts = await kokoro(say);
-    let done = 0, rowsBuf = [];
-    const flush = async () => { if (!rowsBuf.length) return; const { error } = await sb().from('content_edits').upsert(rowsBuf); if (error) throw error; CT().set([...CT().rows().filter(r => !(r.kind === 'aud' && rowsBuf.some(x => x.id === r.id))), ...rowsBuf]); CT().apply(rowsBuf); rowsBuf = []; };
-    for (const it of list) {
-      say(`🔊 Đang tạo audio ${done + 1}/${list.length}: <span class="faint">${esc(it.text.slice(0, 60))}</span>`);
-      const r = await tts.generate(cleanTxt(it.text), { voice: VO[it.role] || 'af_heart', speed: 0.95 });
-      const blob = await toMp3(r.audio, r.sampling_rate);
-      const path = `aud/${it.key}.mp3`;
-      const up = await sb().storage.from('content').upload(path, blob, { contentType: 'audio/mpeg', upsert: true }); if (up.error) throw up.error;
-      rowsBuf.push({ id: it.key, kind: 'aud', data: { u: sb().storage.from('content').getPublicUrl(path).data.publicUrl }, updated_at: new Date().toISOString() });
-      done++; if (rowsBuf.length >= 10) await flush();
-    }
-    await flush(); say(`✅ Đã tạo xong audio cho ${done} câu. Học sinh nghe được từ lần mở web tiếp theo.`);
+    const tok = X.cloudToken && await X.cloudToken(); if (!tok) throw new Error('cần đăng nhập bằng tài khoản admin');
+    let done = 0, i = 0, err = null;
+    const one = async it => { const r = await fetch(X.TTS.CLOUD + '/admin-gen', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: JSON.stringify({ role: it.role, text: it.text }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'lỗi ' + r.status); done++; say(`🔊 Đang tạo audio ${done}/${list.length}: <span class="faint">${esc(it.text.slice(0, 60))}</span>`); };
+    await Promise.all([0, 1, 2].map(async () => { while (i < list.length && !err) { const it = list[i++]; try { await one(it); } catch (e) { err = e; } } }));
+    if (err) throw err;
+    say(`✅ Đã tạo xong audio cho ${done} câu. Học sinh nghe được ngay.`);
     if (X.__audSt && document.getElementById('f-audst')) X.__audSt();
     if (++audRounds < 4) setTimeout(async () => { if ((await scanMissing()).length) audCheck(true); }, 500);   // trong lúc tạo lại có chỗ mới sửa
-  } catch (e) { console.warn(e); say(`<span style="color:var(--red)">Chưa tạo được audio: ${esc(errText(e))}. Thử lại bằng nút “Tạo audio còn thiếu”, hoặc dùng trình duyệt Chrome / Edge trên máy tính.</span>`); }
+  } catch (e) { console.warn(e); say(`<span style="color:var(--red)">Chưa tạo được audio: ${esc(errText(e))}. Thử lại bằng nút “Tạo audio còn thiếu”.</span>`); }
   finally { audBusy = false; }
 }
 // thanh trạng thái audio ở đầu trang Soạn đề

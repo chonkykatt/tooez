@@ -87,6 +87,7 @@ function runExam(view, e, items, sv, chain) {
   const stamp = () => { const now = Date.now(), p = pages[st.pi]; if (p) p.idx.forEach(k => { st.ms[k] += (now - st.shown) / p.idx.length; }); st.shown = now; };
   const stopAll = () => { st.tok++; clearInterval(timer); TTS.stop(); };
   X.onLeave(() => { stamp(); persist(); stopAll(); });
+  X.guard(() => st.done ? null : (chain ? 'Bạn đang làm bài thi 200 câu.' : 'Bạn đang làm đề.') + ' Bài làm được lưu lại, lần sau làm tiếp được' + (listen ? ', nhưng audio của trang này sẽ phát lại từ đầu.' : '.'));
 
   view.innerHTML = `<div class="page wide"><div class="qz ex-run">
     <div class="qz-top"><button class="icon-btn" id="ex-x" title="Thoát">${icon('x')}</button>
@@ -95,7 +96,7 @@ function runExam(view, e, items, sv, chain) {
     ${textMode ? '<div class="card tint small" style="margin-bottom:12px">Không có giọng đọc trên trình duyệt này, nên chữ hiện thay cho audio. Kết quả vẫn được tính.</div>' : ''}
     <div id="ex-main"></div><div class="sheet ex-sheet" id="ex-sheet"></div></div></div>`;
   const main = $('#ex-main', view);
-  $('#ex-x', view).onclick = () => { if (!confirm('Thoát đề? Bài làm được lưu lại, lần sau làm tiếp được.')) return; stamp(); persist(); stopAll(); location.hash = chain ? '#/fulltest' : '#/tests'; };
+  $('#ex-x', view).onclick = () => X.ask('Bài làm được lưu lại, lần sau làm tiếp được.', { title: 'Thoát đề?', yes: 'Thoát' }).then(ok => { if (!ok) return; stamp(); persist(); stopAll(); X.guard(null); X.go(chain ? '#/fulltest' : '#/tests'); });
 
   if (!listen) {
     timer = setInterval(() => { st.left--; const el = $('#ex-t', view); if (el) { el.textContent = fmtMs(Math.max(0, st.left) * 1000); el.classList.toggle('warn', st.left < 120); } if (st.left <= 0) { clearInterval(timer); X.toast('Hết giờ, bài đã được nộp'); finish(); } if (st.left % 15 === 0) persist(); }, 1000);
@@ -158,6 +159,8 @@ function runExam(view, e, items, sv, chain) {
   const say = (t, tk) => tk === st.tok ? TTS.speak(t, { sex: 'M', role: 'N' }) : Promise.resolve();
   async function play() {
     const tk = ++st.tok, p = pages[st.pi], it = items[p.idx[0]]; skipBtn(false);
+    // tải sẵn audio của trang này và trang kế tiếp (lời dẫn + bài nghe), để không phải chờ giữa các câu
+    [p, pages[st.pi + 1]].forEach(q => { if (!q) return; const a = items[q.idx[0]]; TTS.prefetch([...(e.part <= 2 ? [{ s: 'N', t: `Number ${N(q.idx[0])}.` }] : [{ s: 'N', t: `Questions ${N(q.idx[0])} through ${N(q.idx[q.idx.length - 1])} refer to the following ${e.part === 3 ? 'conversation' : 'talk'}.` }, ...q.idx.map(k => ({ s: 'N', t: `Number ${N(k)}. ${items[k].prompt}` }))]), ...(a.audio || [])]); });
     await new Promise(r => setTimeout(r, 450)); if (tk !== st.tok) return;
     if (e.part <= 2) {
       status(`${icon('vol')} Đang phát câu ${N(p.idx[0])}…`);

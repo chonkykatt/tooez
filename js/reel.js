@@ -43,7 +43,7 @@ let viV = null;
 const viVoice = () => viV || (viV = ('speechSynthesis' in window ? speechSynthesis.getVoices() : []).find(v => /^vi/i.test(v.lang)) || null);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const sayVi = async text => {
-  if (TTS.fileFor('VI', text)) return TTS.speak(text, { role: 'VI', forceFile: true });
+  if (TTS.CLOUD || TTS.fileFor('VI', text)) return TTS.speak(text, { role: 'VI', forceFile: true });
   const v = viVoice(); if (!v) return sleep(900 + text.length * 45);   // không có giọng Việt: đủ thời gian để đọc phụ đề
   const tk = TTS.token;
   return new Promise(res => { const u = new SpeechSynthesisUtterance(text); u.voice = v; u.lang = v.lang; u.rate = 1.05; let t = setTimeout(res, 4000 + text.length * 120);

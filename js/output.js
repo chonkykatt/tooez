@@ -153,7 +153,9 @@ const colOf = w => { const r = REEL().find(x => x.w.toLowerCase() === w.w.toLowe
 
 /* ---------- Sổ câu: câu học sinh tự đặt ---------- */
 const mySents = () => { const st = S(); return st.mySents || (st.mySents = []); };
-const saveSent = (w, s, chk) => { const L = mySents(); L.unshift({ wid: w.id, w: w.w, s, chk, at: Date.now() }); /* khoá đồng bộ theo at: một từ có thể có nhiều câu */ if (L.length > 500) L.length = 500; X.save(); };
+const saveSent = (w, s, chk) => { const L = mySents(); L.unshift({ wid: w.id, w: w.w, s, chk, at: Date.now() }); /* khoá đồng bộ theo at: một từ có thể có nhiều câu */ if (L.length > 500) L.length = 500; X.save();
+  TTS.gen && TTS.gen(TTS.roleFor(s), s);   // tạo giọng ngầm ngay khi lưu, để lúc bấm nghe là có tiếng ngay
+};
 X.mySentsOf = id => mySents().filter(x => x.wid === id);
 
 /* ---------- 1 bài: vẽ vào el, xong gọi done({ok, self}) ---------- */
@@ -339,7 +341,8 @@ function soCau(view) {
     ${L.length ? `<div class="ot-list">${L.map((x, i) => `<div class="card ot-row"><div><a href="#/vocab/w/${esc(x.wid)}"><b>${esc(x.w)}</b></a> <span class="small faint">${new Date(x.at).toLocaleDateString('vi-VN')}</span>${(x.chk || []).length === 3 ? ' <span class="pill sage">✓ đã tự kiểm</span>' : ' <span class="pill gold">nên xem lại</span>'}</div>
       <div class="ot-s">${esc(x.s)}</div><div class="row" style="gap:6px"><button class="btn sm" data-say="${esc(x.s)}">${icon('vol')} Nghe</button><button class="btn ghost sm" data-del="${i}">Xoá</button></div></div>`).join('')}</div>`
       : `<div class="empty">Chưa có câu nào. <a href="#/output/own">Tự đặt câu đầu tiên</a></div>`}</div>`;
-  $$('[data-say]', view).forEach(b => b.onclick = () => TTS.speak(b.dataset.say, { role: 'W' }));
+  $$('[data-say]', view).forEach(b => b.onclick = () => { TTS.stop(); TTS.speak(b.dataset.say, { role: TTS.roleFor(b.dataset.say) }); });
+  TTS.prefetch && TTS.prefetch(L.slice(0, 30).map(x => ({ s: TTS.roleFor(x.s), t: x.s })));   // tải sẵn 30 câu đầu
   $$('[data-del]', view).forEach(b => b.onclick = () => { if (!confirm('Xoá câu này khỏi Sổ câu?')) return; L.splice(+b.dataset.del, 1); X.save(); X.render(); });
 }
 })();

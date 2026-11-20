@@ -1673,3 +1673,8 @@ mark.hlx{background:#FFE58A;color:inherit;border-radius:4px;padding:0 3px;font-s
 @keyframes otBlink{50%{opacity:.25}}
 .ot-bar{width:120px;height:8px;border-radius:4px;background:var(--line, #e6e3f3);overflow:hidden}.ot-bar i{display:block;height:100%;width:0;background:var(--sage, #1f9d63);transition:width .08s}
 .ot-meter.think .ot-bar{display:none}
+
+/* giọng đọc: nút vừa bấm hiện vòng xoay khi file đang tải (js/core.js playSrc1) */
+.tts-wait{position:relative}
+.tts-wait::before{content:'';position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;border:2px solid var(--syn);border-top-color:transparent;animation:ttsSpin .7s linear infinite;pointer-events:none;z-index:2}
+@keyframes ttsSpin{to{transform:rotate(360deg)}}

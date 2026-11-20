@@ -158,6 +158,8 @@ function runExam(view, e, items, sv, chain) {
   const say = (t, tk) => tk === st.tok ? TTS.speak(t, { sex: 'M', role: 'N' }) : Promise.resolve();
   async function play() {
     const tk = ++st.tok, p = pages[st.pi], it = items[p.idx[0]]; skipBtn(false);
+    // tải sẵn audio của trang này và trang kế tiếp (lời dẫn + bài nghe), để không phải chờ giữa các câu
+    [p, pages[st.pi + 1]].forEach(q => { if (!q) return; const a = items[q.idx[0]]; TTS.prefetch([...(e.part <= 2 ? [{ s: 'N', t: `Number ${N(q.idx[0])}.` }] : [{ s: 'N', t: `Questions ${N(q.idx[0])} through ${N(q.idx[q.idx.length - 1])} refer to the following ${e.part === 3 ? 'conversation' : 'talk'}.` }, ...q.idx.map(k => ({ s: 'N', t: `Number ${N(k)}. ${items[k].prompt}` }))]), ...(a.audio || [])]); });
     await new Promise(r => setTimeout(r, 450)); if (tk !== st.tok) return;
     if (e.part <= 2) {
       status(`${icon('vol')} Đang phát câu ${N(p.idx[0])}…`);

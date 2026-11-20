@@ -608,8 +608,8 @@ X.route(/^\/settings$/, view => {
         <div class="field"><label>Từ mới mỗi ngày</label><input class="inp" type="number" min="0" max="40" data-p="newWords" value="${p.newWords}"></div></div>
         <div class="field" style="margin-top:12px"><label>Ưu tiên (lộ trình hiện trong Hôm nay)</label><div class="pick g2 compact" id="st-focus">${X.TRACKS.map(x => `<button type="button" data-k="${x.k}" class="pick-o ${p.focus.includes(x.k) ? 'on' : ''}"><span class="pick-ck">${icon('check')}</span><b>${esc(x.n)}</b></button>`).join('')}</div></div></div>
       <div class="card"><div class="h3" style="margin-bottom:12px">Giọng đọc</div>
-        <div class="field" style="margin-bottom:12px"><label>Nguồn giọng</label><div class="seg" id="st-src">${[['auto', 'Tự động'], ['files', 'Giọng TOOEZ'], ['browser', 'Giọng trình duyệt']].map(([k, n]) => `<button data-v="${k}" class="${(p.voiceSrc || 'auto') === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-          <div class="small muted" style="margin-top:6px">Tự động: dùng giọng Natural có sẵn nếu bạn mở bằng Microsoft Edge, trình duyệt khác dùng giọng TOOEZ thu sẵn.</div></div>
+        <div class="field" style="margin-bottom:12px"><label>Nguồn giọng</label><div class="seg" id="st-src">${[['auto', 'Giọng TOOEZ'], ['browser', 'Giọng trình duyệt']].map(([k, n]) => `<button data-v="${k}" class="${(p.voiceSrc === 'browser' ? 'browser' : 'auto') === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+          <div class="small muted" style="margin-top:6px">Giọng TOOEZ: giọng Google Chirp thu sẵn, đủ giọng Mỹ, Anh, Úc như đề thật. Câu nào chưa có thì tự dùng giọng của trình duyệt.</div></div>
         <div id="st-vq"></div>
         <div class="field"><label>Giọng chính</label><div class="seg" id="st-acc">${[['en-US', 'Mỹ'], ['en-GB', 'Anh'], ['en-AU', 'Úc']].map(([k, n]) => `<button data-v="${k}" class="${p.accent === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
         <div class="grid g2" style="margin-top:12px"><div class="field"><label>Giọng nữ</label><select class="inp" id="st-vw"></select></div><div class="field"><label>Giọng nam</label><select class="inp" id="st-vm"></select></div></div>

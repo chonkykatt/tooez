@@ -83,6 +83,10 @@ const dataStats = await page.evaluate(async runs => {
   return N;
 }, LAB_RUNS);
 
+// tải sẵn mọi gói kiến thức (data/k/*.js) để trang bài học hiện ngay, khỏi chờ từng bài
+const packs = fs.readdirSync(path.join(ROOT, 'data/k')).filter(f => f.endsWith('.js')).map(f => f.slice(0, -3));
+await page.evaluate(async ps => { for (const pk of ps) { try { await X.loadKnowledge(pk); } catch (e) {} } }, packs);
+
 // ---- 2 + 3. mở từng trang, gom nút loa / câu bấm-để-nghe, và câu web tự đọc khi mở trang
 const routes = await page.evaluate(() => {
   const H = ['/about', '/today', '/coach', '/errors', '/fulltest', '/lab', '/library', '/ngop', '/ngop/hoc', '/path', '/progress', '/settings', '/skills', '/tests', '/vocab', '/vocab/nho', '/output', '/output/so', '/doc'];
@@ -97,7 +101,7 @@ for (const h of queue) {
   if (seen.has(h)) continue; seen.add(h);
   await page.evaluate(x => { location.hash = '#' + x; }, h); await new Promise(r => setTimeout(r, 250));
   // bài học: khung có ngay nhưng nội dung tải sau → chờ tới khi có câu bấm-để-nghe
-  if (/^\/lesson\//.test(h)) await page.waitForFunction(() => document.querySelector('#ls-body [data-sayt]'), { timeout: 4000 }).catch(() => {});
+  if (/^\/lesson\//.test(h)) await page.waitForFunction(() => document.getElementById('ls-body'), { timeout: 4000 }).catch(() => {});
   else if (/^\/library/.test(h)) await new Promise(r => setTimeout(r, 600));
   const links = await page.evaluate(() => {
     document.querySelectorAll('[data-say],[data-sayw],[data-say2]').forEach(el => window.__add('W', el.dataset.say ?? el.dataset.sayw ?? el.dataset.say2, 'page'));

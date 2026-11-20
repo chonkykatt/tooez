@@ -17,6 +17,7 @@ export const VOICES = {
   SM: 'en-GB-Chirp3-HD-Iapetus',  // nam, Anh (thứ hai)
   K: 'en-AU-Chirp3-HD-Zephyr',    // nữ, Úc
   M2: 'en-AU-Chirp3-HD-Umbriel',  // nam, Úc
+  VI: 'vi-VN-Chirp3-HD-Aoede',    // tiếng Việt (lời dẫn của Nhớ 1 phát), cùng giọng với W
 };
 const MAX_GEN = 200, MAX_CI = 1000;
 
@@ -121,7 +122,7 @@ export default {
       if (p === '/usage' && ciOk(env, req)) return json({ month: month(), chars: await readNum(env, `usage/${month()}.json`), cap: capOf(env) });
       if (p === '/voices' && ciOk(env, req)) {
         const out = {};
-        for (const lc of ['en-US', 'en-GB', 'en-AU']) { const r = await fetch('https://texttospeech.googleapis.com/v1/voices?languageCode=' + lc, { headers: { 'x-goog-api-key': env.GOOGLE_TTS_KEY } });
+        for (const lc of (url.searchParams.get('lc') || 'en-US,en-GB,en-AU').split(',').slice(0, 6)) { const r = await fetch('https://texttospeech.googleapis.com/v1/voices?languageCode=' + lc, { headers: { 'x-goog-api-key': env.GOOGLE_TTS_KEY } });
           const j = await r.json(); out[lc] = (j.voices || []).filter(v => /Chirp3-HD/.test(v.name)).map(v => v.name + ' ' + v.ssmlGender); }
         const all = Object.values(out).flat().map(x => x.split(' ')[0]);
         return json({ missing: Object.entries(VOICES).filter(([, n]) => !all.includes(n)), voices: out });

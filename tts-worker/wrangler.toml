@@ -7,6 +7,8 @@ name = "tooez-tts"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
+# tên miền riêng: Cloudflare ghi nhớ file ở máy chủ gần người dùng (Cache API không chạy trên workers.dev)
+routes = [{ pattern = "tts.2die429.com", custom_domain = true }]
 
 [vars]
 CAP_CHARS = "900000"     # trần ký tự Google mỗi tháng (Chirp 3 HD miễn phí 1 triệu ký tự đầu)

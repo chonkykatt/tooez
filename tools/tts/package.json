@@ -1,0 +1,1 @@
+{ "name": "tooez-tts-tools", "private": true, "type": "module", "scripts": { "collect": "node collect.mjs" }, "dependencies": { "puppeteer-core": "^24.0.0" } }

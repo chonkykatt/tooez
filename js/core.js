@@ -536,7 +536,33 @@ X.sessGet = k => { const r = (X.S().resume || {})[k]; return r && Date.now() - r
 X.sessSet = (k, v) => { const s = X.S(); s.resume = s.resume || {}; s.resume[k] = Object.assign({}, v, { at: Date.now() }); X.save(); };
 X.sessDel = k => { const s = X.S(); if (s.resume && s.resume[k]) { delete s.resume[k]; X.save(); } };
 X.hereKey = () => location.hash.slice(1) || '/today';
-X.go = h => { if (location.hash === h) X.render(); else location.hash = h; };
+/* ---- Đang làm bài dở: bấm sang trang khác (menu, link, nút Lùi của trình duyệt), đóng hoặc tải lại tab → hỏi trước ----
+   Trang làm bài gọi X.guard(() => 'lời nhắc' | null): trả lời nhắc khi đang làm dở, null khi không cần hỏi (đã nộp...).
+   Mỗi lần đổi trang guard tự bỏ. X.go (code của web tự chuyển trang, vd. nộp xong sang trang kết quả) không bị hỏi. */
+let guard = null, allowHash = null;
+X.guard = fn => { guard = fn || null; };
+const guardMsg = () => { try { return guard ? guard() : null; } catch (e) { return null; } };
+X.ask = (msg, o = {}) => new Promise(res => {
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" role="alertdialog" aria-modal="true"><div class="h3">${o.title || 'Rời bài đang làm?'}</div><p class="small muted" style="margin:8px 0 16px">${msg}</p>
+    <div class="row" style="gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" data-a="0">${o.no || 'Ở lại làm tiếp'}</button><button class="btn pri" data-a="1">${o.yes || 'Rời đi'}</button></div></div>`;
+  const key = e => { if (e.key === 'Escape') { e.preventDefault(); done(false); } e.stopPropagation(); };   // phím tắt của bài làm (1-4, Enter) không chạy khi hộp đang mở
+  const done = v => { window.removeEventListener('keydown', key, true); bg.remove(); res(v); };
+  bg.addEventListener('click', e => { if (e.target === bg) done(false); const b = e.target.closest('[data-a]'); if (b) done(b.dataset.a === '1'); });
+  window.addEventListener('keydown', key, true);
+  document.body.appendChild(bg); bg.querySelector('[data-a="0"]').focus();
+});
+let asking = false;
+const onHash = () => {
+  const to = location.hash, here = '#' + (X.curHash || ''), msg = to !== allowHash && X.curHash && to !== here ? guardMsg() : null;
+  allowHash = null;
+  if (!msg) return X.render();
+  history.pushState(null, '', here);   // về lại địa chỉ bài đang làm, không vẽ lại trang (bài vẫn chạy nguyên)
+  if (asking) return; asking = true;
+  X.ask(msg).then(ok => { asking = false; if (ok) { guard = null; location.hash = to; } });
+};
+window.addEventListener('beforeunload', e => { if (guardMsg()) { e.preventDefault(); e.returnValue = ''; } });
+X.go = h => { if (location.hash === h) X.render(); else { allowHash = h; location.hash = h; } };
 let cleanup = null;
 X.onLeave = fn => { cleanup = fn; };
 // tab khác vừa lưu tiến độ: trang tổng quan thì vẽ lại cho số mới; trang đang làm bài thì để yên, không cắt ngang
@@ -547,6 +573,7 @@ const restoreScroll = (y, h) => { let n = 0; const go = () => { if (X.curHash !=
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#side a, .side a')) X.sideNav = true; }, true);
 X.render = () => {
   TTS.stop(); if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
+  guard = null;
   document.onkeydown = null;
   const h = location.hash.slice(1) || '/about';   // mở web lần nào cũng gặp trang Giới thiệu trước
   // nhớ vị trí cuộn của trang danh sách: làm xong một bài rồi quay lại thì về đúng chỗ vừa bấm, không nhảy lên đầu trang
@@ -559,7 +586,7 @@ X.render = () => {
   }
   X.go('#/today');
 };
-window.addEventListener('hashchange', X.render);
+window.addEventListener('hashchange', onHash);
 // bấm link trỏ đúng trang đang mở (vd. nút ✕ trong bài Lab trỏ về trang giới thiệu cùng địa chỉ): hash không đổi nên trình duyệt không làm gì → tự vẽ lại trang
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="#/"]'); if (!a || e.defaultPrevented || a.target) return; if (a.getAttribute('href') === location.hash) { e.preventDefault(); X.render(); } });
 

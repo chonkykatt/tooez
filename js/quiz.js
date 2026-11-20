@@ -39,10 +39,11 @@ X.runQuiz = (view, o) => {
   </div></div>`;
 
   const main = $('#qz-main', view);
-  $('[data-k=exit]', view).onclick = () => { if (mode === 'test' && st.ans.some(a => a !== null) && !confirm('Thoát bài? Bài làm dở sẽ bị bỏ.')) return; stop(); sKey && X.sessDel(sKey); location.hash = o.back || '#/today'; };
+  $('[data-k=exit]', view).onclick = async () => { if (mode === 'test' && !o.reviewing && st.ans.some(a => a !== null) && !(await X.ask('Bài làm dở sẽ bị bỏ.', { title: 'Thoát bài?', yes: 'Thoát' }))) return; stop(); sKey && X.sessDel(sKey); X.guard(null); X.go(o.back || '#/today'); };
 
   const stop = () => { clearInterval(timer); TTS.stop(); };
   X.onLeave(() => { stamp(); persist(); stop(); });
+  X.guard(() => o.reviewing || st.done || !st.ans.some(a => a !== null) ? null : sKey ? 'Bài làm dở được lưu lại, quay lại trang này là làm tiếp được.' : 'Bài này không lưu lại được, rời đi là mất phần đã làm.');
   if (o.reviewing) { /* no timer while reviewing */ }
   else if (o.timeLimit) {
     timer = setInterval(() => {

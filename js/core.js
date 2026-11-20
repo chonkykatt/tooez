@@ -339,7 +339,7 @@ TTS.pick = (sex, lang) => {
 };
 // Trình duyệt không có giọng tiếng Anh (Opera, Opera GX, một số bản Firefox/Linux): báo rõ thay vì im lặng
 TTS.isOpera = /\bOPR\/|Opera/.test(navigator.userAgent);
-TTS.missing = () => !TTS.hasFiles() && (!('speechSynthesis' in window) || !TTS.voices.length);
+TTS.missing = () => !TTS.CLOUD && (!('speechSynthesis' in window) || !TTS.voices.length);
 let ttsWarned = false;
 TTS.warn = () => {
   if (ttsWarned || window.__noTTSWarn) return; ttsWarned = true;
@@ -348,17 +348,10 @@ TTS.warn = () => {
     <p class="muted" style="margin:0 0 10px">${who}, nên các bài nghe sẽ im lặng.</p>
     <p style="margin:0 0 10px">Mở web bằng <b>Microsoft Edge</b> (giọng tự nhiên nhất), <b>Google Chrome</b> hoặc <b>Safari</b>, rồi vào lại đúng trang này. Tiến độ học lưu theo từng trình duyệt: muốn chuyển tiến độ thì vào <b>Hồ sơ → Tải file sao lưu</b> ở trình duyệt cũ, rồi nạp file đó ở trình duyệt mới.</p></div></div>`);
 };
-/* ---- Audio thu sẵn (giọng neural, file mp3 trong thư mục audio/): có file thì phát file, không có mới dùng giọng của trình duyệt.
-   Mỗi câu = vai đọc + câu chữ, băm FNV-1a thành tên file. Danh sách file có sẵn nằm trong data/audio-index.js (window.AUDIO_HAVE). */
-const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
 TTS.norm = t => String(t).replace(/\s+/g, ' ').trim();
-TTS.key = (role, text) => fnv(role + '|' + TTS.norm(text));
-let HAVE = null;
-const have = () => HAVE || (HAVE = new Set(String(window.AUDIO_HAVE || '').split(/\s+/).filter(Boolean)));
-TTS.hasFiles = () => !!TTS.CLOUD || have().size > 0;
-TTS.fileFor = (role, text) => { const k = TTS.key(role, text); return have().has(k) ? 'audio/' + k + '.mp3' : (window.TOOEZ_AUD && window.TOOEZ_AUD[k]) || null; };   // TOOEZ_AUD: audio tạo trên trang Soạn đề, lưu ở Supabase
 /* ---- Giọng Google Chirp 3 HD trên máy chủ riêng (thư mục tts-worker/). Web tự tính mã file rồi tải thẳng, không cần hỏi trước.
-   Mã PHẢI giống hệt tts-worker/src/key.js (cyrb53 của "vai|câu"). Không có file (404) thì dùng file Kokoro cũ ở audio/, rồi mới tới giọng trình duyệt. */
+   Mã PHẢI giống hệt tts-worker/src/key.js (cyrb53 của "vai|câu"). Không có file (404) / mạng lỗi thì đọc bằng giọng trình duyệt,
+   và báo câu đó về máy chủ (/miss) để tạo bù (xem tools/tts/misses.mjs). */
 TTS.CLOUD = 'https://tts.2die429.com';
 const cyrb53 = (s, seed = 0) => {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
@@ -448,14 +441,18 @@ const playSrc1 = (src, rate, loadMs = 12000) => new Promise(res => {
     console.warn('[TOOEZ audio]', e && e.name, src); fin(false);
   });
 });
-// lỗi mạng thoáng qua: thử lại 1 lần trước khi chuyển sang giọng trình duyệt
-const playSrc = async (src, rate) => { const tk = TTS.token; let ok = await playSrc1(src, rate); if (ok === false && tk === TTS.token) { await new Promise(r => setTimeout(r, 400)); if (tk === TTS.token) ok = await playSrc1(src + (src.includes('?') ? '&' : '?') + 'r=' + Date.now(), rate); } return ok; };
 // "(A) The man is..." / "A. Yes, ..." → đọc chữ cái và câu bằng hai file riêng, nên một câu dùng được cho mọi thứ tự đáp án
 const splitLetter = t => { const m = TTS.norm(t).match(/^\(?([A-D])[).]\s+(.+)$/); return m ? [m[1] + '.', m[2]] : [TTS.norm(t)]; };
-TTS.files = (role, text) => { const parts = splitLetter(text), srcs = parts.map(p => TTS.fileFor(role, p)); return srcs.every(Boolean) ? srcs : null; };
 TTS.edgeNatural = () => TTS.voices.some(v => /Microsoft/i.test(v.name) && /Natural/i.test(v.name));
 // "Tự động" và "Giọng TOOEZ": file Chirp → file cũ → giọng trình duyệt. Chỉ khi chọn "Giọng trình duyệt" mới bỏ qua file.
 TTS.useVoice = () => S.profile.voiceSrc === 'browser' && TTS.voices.length > 0;
+const MISSQ = new Map(), MISSED = new Set(); let missT = 0;
+const missed = (role, text) => {
+  const k = role + '|' + text; (window.__audioMiss || (window.__audioMiss = [])).push(k);
+  if (!TTS.CLOUD || MISSED.has(k) || !navigator.onLine || TTS.useVoice()) return; MISSED.add(k); MISSQ.set(k, { role, text });
+  clearTimeout(missT); missT = setTimeout(() => { const items = [...MISSQ.values()].slice(0, 20); MISSQ.clear();
+    fetch(TTS.CLOUD + '/miss', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items, page: location.hash.slice(0, 100) }) }).catch(() => {}); }, 5000);
+};
 TTS.speak = async (text, opt = {}) => {
   const role = opt.role || (opt.sex === 'M' ? 'M' : 'W');
   if (TTS.useVoice() && !opt.forceFile) return TTS.speakVoice(text, opt);
@@ -463,13 +460,16 @@ TTS.speak = async (text, opt = {}) => {
   if (parts.length > 1) TTS.prefetch([{ s: role, t: text }]);
   for (let i = 0; i < parts.length; i++) {
     if (tk !== TTS.token) return;
-    const p = parts[i], cloud = TTS.cloudFor(role, p), old = TTS.fileFor(role, p);
+    const p = parts[i], cloud = TTS.cloudFor(role, p);
     let ok = false;
-    if (cloud) { ok = await playSrc1(cloud, rate, 2000); if (ok === false && tk === TTS.token && !cloud.startsWith('blob:')) NOFILE.set(TTS.key2(role, p), Date.now()); }
+    if (cloud) {
+      const t0 = Date.now(); ok = await playSrc1(cloud, rate, 2000);
+      // hỏng ngay (404 / file lỗi) thì thôi; chờ đủ 2 giây mới hỏng (mạng chậm) thì cho thêm một lần, lâu hơn
+      if (ok === false && tk === TTS.token && Date.now() - t0 > 1800 && navigator.onLine !== false) ok = await playSrc1(cloud, rate, 4000);
+      if (ok === false && tk === TTS.token && !cloud.startsWith('blob:')) NOFILE.set(TTS.key2(role, p), Date.now());
+    }
     if (tk !== TTS.token || ok === 'stop') return;
-    if (!ok && old) ok = await playSrc(old, rate);
-    if (tk !== TTS.token || ok === 'stop') return;
-    if (!ok) { (window.__audioMiss || (window.__audioMiss = [])).push(role + '|' + p); return TTS.speakVoice(parts.slice(i).join(' '), opt); }
+    if (!ok) { missed(role, p); return TTS.speakVoice(parts.slice(i).join(' '), opt); }
     if (i < parts.length - 1) await new Promise(r => setTimeout(r, 150));
   }
 };

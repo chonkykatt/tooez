@@ -8,12 +8,14 @@ const obj = v => ({ arrayBuffer: async () => (typeof v === 'string' ? new TextEn
 const env = {
   CAP_CHARS: '200', USER_DAILY: '2', CI_TOKEN: 'ci', GOOGLE_TTS_KEY: 'g', TURNSTILE_SECRET: 't',
   SUPABASE_URL: 'https://sb.test', SUPABASE_ANON: 'anon', ALLOWED_ORIGINS: 'https://tooez.netlify.app,https://*--tooez.netlify.app',
-  AUD: { get: async k => store.has(k) ? obj(store.get(k)) : null, head: async k => store.has(k) ? {} : null, put: async (k, v) => { store.set(k, v); } },
+  AUD: { get: async k => store.has(k) ? obj(store.get(k)) : null, head: async k => store.has(k) ? {} : null, put: async (k, v) => { store.set(k, v); }, delete: async k => { store.delete(k); },
+    list: async ({ prefix }) => ({ objects: [...store.keys()].filter(k => k.startsWith(prefix)).map(key => ({ key })), truncated: false }) },
 };
 globalThis.caches = { default: { match: async r => edge.get(r.url)?.clone() || null, put: async (r, res) => { edge.set(r.url, res); } } };
 globalThis.fetch = async (u, o = {}) => {
   u = String(u);
   if (u.includes('text:synthesize')) { const b = JSON.parse(o.body); calls.push('google:' + b.voice.name); return new Response(JSON.stringify({ audioContent: btoa('MP3:' + b.input.text) })); }
+  if (u.startsWith('https://sb.test/rest/v1/rpc/is_admin')) return new Response(JSON.stringify(o.headers.authorization === 'Bearer admin'));
   if (u.startsWith('https://sb.test/auth/v1/user')) return o.headers.authorization === 'Bearer good' ? new Response(JSON.stringify({ id: 'u1' })) : new Response('{}', { status: 401 });
   if (u.includes('siteverify')) return new Response(JSON.stringify({ success: o.body.get('response') === 'ok' }));
   throw new Error('fetch lạ: ' + u);
@@ -60,4 +62,18 @@ await t('trần ký tự tháng → 429, file đã có vẫn phát', async () =>
 await t('/usage cần khóa, đếm đúng', async () => {
   assert.equal((await call('/usage')).status, 404);
   const u = await (await call('/usage', { headers: { 'x-ci-token': 'ci' } })).json(); assert.equal(u.chars, 'Good morning, everyone.'.length + 'I like tea.'.length + 'Second one here.'.length); });
+await t('admin-gen: không phải admin → 403, admin → tạo', async () => {
+  assert.equal((await post('/admin-gen', { role: 'W', text: 'Admin line.' }, { ...WEB, authorization: 'Bearer good' })).status, 403);
+  env.CAP_CHARS = '100000';
+  const r = await post('/admin-gen', { role: 'W', text: 'Admin line.' }, { ...WEB, authorization: 'Bearer admin' }); assert.equal(r.status, 201);
+  assert.equal((await post('/admin-gen', { role: 'W', text: 'Admin line.' }, { ...WEB, authorization: 'Bearer admin' })).status, 200); });
+await t('has: trả đúng mã còn thiếu', async () => {
+  const a = keyOf('W', 'Admin line.'), b = keyOf('W', 'Never made.');
+  assert.deepEqual((await (await post('/has', { keys: [a, b, 'rác'] }, WEB)).json()).missing, [b]); });
+await t('miss: lưu câu bị lọt, bỏ câu đã có file, tạo xong thì xoá', async () => {
+  const r = await (await post('/miss', { items: [{ role: 'M', text: 'Lost line here.' }, { role: 'W', text: 'Admin line.' }, { role: 'ZZ', text: 'x' }] }, WEB)).json();
+  assert.equal(r.saved, 1); assert.equal((await post('/miss', { items: [] }, { origin: 'https://evil.com' })).status, 403);
+  const m = await (await call('/misses', { headers: { 'x-ci-token': 'ci' } })).json(); assert.equal(m.count, 1); assert.equal(m.items[0].text, 'Lost line here.');
+  await post('/ci', { role: 'M', text: 'Lost line here.' }, { 'x-ci-token': 'ci' });
+  assert.equal((await (await call('/misses', { headers: { 'x-ci-token': 'ci' } })).json()).count, 0); });
 console.log(`\n${ok} test đạt`);

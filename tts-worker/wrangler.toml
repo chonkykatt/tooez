@@ -1,0 +1,22 @@
+# TOOEZ - máy chủ giọng đọc. Deploy: cd tts-worker && npx wrangler deploy
+# Khóa bí mật KHÔNG để ở đây, đặt bằng: npx wrangler secret put <TÊN>
+#   GOOGLE_TTS_KEY    khóa Google Cloud Text-to-Speech
+#   TURNSTILE_SECRET  khóa bí mật của Cloudflare Turnstile
+#   CI_TOKEN          khóa cho GitHub Actions (cùng giá trị với secret TTS_CI_TOKEN trên GitHub)
+name = "tooez-tts"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+# tên miền riêng: Cloudflare ghi nhớ file ở máy chủ gần người dùng (Cache API không chạy trên workers.dev)
+routes = [{ pattern = "tts.2die429.com", custom_domain = true }]
+
+[vars]
+CAP_CHARS = "900000"     # trần ký tự Google mỗi tháng (Chirp 3 HD miễn phí 1 triệu ký tự đầu)
+USER_DAILY = "50"        # mỗi học sinh tạo tối đa bao nhiêu câu mới mỗi ngày
+ALLOWED_ORIGINS = "https://tooez.netlify.app,https://*--tooez.netlify.app,http://localhost:*,http://127.0.0.1:*"
+SUPABASE_URL = "https://vahbevhlqwvrrinjwnen.supabase.co"
+SUPABASE_ANON = "sb_publishable_vxRvMSMVVthotqiHea-Kaw_vlJgH0nO"   # khóa công khai, giống js/cloud-config.js
+
+[[r2_buckets]]
+binding = "AUD"
+bucket_name = "tooez"

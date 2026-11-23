@@ -1,4 +1,4 @@
-/* Đếm lượt ghé (GoatCounter) + bé mèo nhỏ ở góc: "X bạn cùng chăm chỉ luyện TOEIC tuần này".
+/* Đếm lượt ghé (GoatCounter) + bé mèo nhỏ ở góc: "X bạn đang học cùng TOOEZ" (tổng từ đầu).
    Web dùng #/đường-dẫn nên tự gửi lượt xem mỗi lần đổi trang. Không đếm máy của admin và bản chạy thử trên máy. */
 (function () {
   const GC = 'https://tooez.goatcounter.com';
@@ -22,10 +22,8 @@
   const get = q => fetch(GC + '/counter/TOTAL.json' + q, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => j ? fmt(j.count) : 0).catch(() => 0);
   const load = async () => {
     if (local) return null;
-    const w = await get('?start=week');
-    if (w >= 10) return `<b>${w.toLocaleString('vi-VN')}</b> bạn cùng luyện TOEIC tuần này`;
-    const t = await get('');
-    if (t >= 30) return `<b>${t.toLocaleString('vi-VN')}</b> lượt ghé luyện cùng TOOEZ`;
+    const t = await get('');   // tổng từ đầu (GoatCounter đếm lượt ghé không trùng)
+    if (t >= 30) return `<b>${t.toLocaleString('vi-VN')}</b> bạn đang học cùng TOOEZ`;
     return null;
   };
   const MSG0 = 'Mèo luyện TOEIC cùng bạn nè';
